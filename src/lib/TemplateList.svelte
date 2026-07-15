@@ -1,7 +1,8 @@
 <script lang="ts">
   import type { Template } from '$src/Types';
-  export let templates: Template[];
   import { lazyLoad } from '$lib/lazy-load';
+
+  let { templates }: { templates: Template[] } = $props();
 
   const slugify = (title: string) => {
     return `/${title.toLowerCase().replace(/[^a-zA-Z ]/g, "").replaceAll(' ', '-')}`;

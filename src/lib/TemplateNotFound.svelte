@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { gitHubRepo } from '$src/constants'; 
-  export let templateName: string;
+  import { gitHubRepo } from '$src/constants';
+  let { templateName }: { templateName: string } = $props();
 </script>
 
 <section>

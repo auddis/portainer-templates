@@ -1,17 +1,22 @@
 <script lang="ts">
+  import type { Snippet } from 'svelte';
   import Icon from '$lib/Icon.svelte';
 
-  export let to = '';
-  export let action = () => {};
-  export let target = '_self';
-  export let icon: string | null = null;
-  export let selected: boolean = false;
-
+  interface Props {
+    to?: string;
+    action?: () => void;
+    target?: string;
+    icon?: string | null;
+    selected?: boolean;
+    children?: Snippet;
+  }
+  let { to = '', action = () => {}, target = '_self', icon = null, selected = false, children }: Props = $props();
 </script>
 
-<svelte:element this={to ? 'a' : 'button'} href={to} on:click={action} {target} class:selected>
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<svelte:element this={to ? 'a' : 'button'} href={to} onclick={action} {target} class:selected>
   {#if icon}<Icon name={icon} />{/if}
-  <slot />
+  {@render children?.()}
 </svelte:element>
 
 

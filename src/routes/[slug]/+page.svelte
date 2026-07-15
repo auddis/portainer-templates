@@ -1,59 +1,65 @@
 <script lang="ts">
 
-  import { page } from '$app/stores';
+  import { page } from '$app/state';
 
   import ServiceStats from '$lib/ServiceStats.svelte';
   import TemplateNotFound from '$lib/TemplateNotFound.svelte';
   import DockerStats from '$lib/DockerStats.svelte';
   import MdContent from '$lib/MdContent.svelte';
+  import Note from '$lib/Note.svelte';
   import InstallationInstructions from '$lib/InstallationInstructions.svelte';
 
+  import { baseUrl } from '$src/constants';
   import type { Template, Service, DockerHubResponse } from '$src/Types';
 
-  const urlSlug = $page.params.slug;
-  const template = $page.data.template as Template;
-  const dockerStats = $page.data.dockerStats as DockerHubResponse;
-  const services = $page.data.services as Service[];
+  const urlSlug = $derived(page.params.slug ?? '');
+  const template = $derived(page.data.template as Template | null);
+  const dockerStats = $derived(page.data.dockerStats as DockerHubResponse | null);
+  const services = $derived((page.data.services ?? []) as Service[]);
 
-  const makeMultiDoc = (services: Service[]) => {
-    return services.map((s) => {
-      return s?.dockerStats?.full_description ? {
+  const makeMultiDoc = (svcs: Service[]) =>
+    svcs
+      .filter((s) => s?.dockerStats?.full_description)
+      .map((s) => ({
         name: s.name,
-        description: s.dockerStats.description,
-        content: s.dockerStats.full_description,
-        visible: false,
-      } : null;
-    }).filter((thingy) => thingy !== null);
-  };
+        description: s.dockerStats?.description ?? '',
+        content: s.dockerStats?.full_description ?? '',
+      }));
 
-  const makeMetaDescription = () => {
-    return `Installation guide for ${template.title}, using Portainer, Docker Run or Docker-Compose. `
-    +`Portainer-Templates is a community driven repository of Portainer Templates for Self-Hosted apps. \n`
-    +`${template.description}`;
-  }
+  const multiDocs = $derived(makeMultiDoc(services));
+
+  const makeMetaDescription = (t: Template) =>
+    `Installation guide for ${t.title}, using Portainer, Docker Run or Docker-Compose. `
+    + `Portainer-Templates is a community driven repository of Portainer Templates for Self-Hosted apps. \n`
+    + `${t.description}`;
 
 </script>
 
 <svelte:head>
-  <title>{template.title} | Portainer Templates</title>
-  <meta name="description" content={makeMetaDescription()} />
-  <meta property="og:title" content="{template.title} | Portainer Templates" />
-  <meta property="og:description" content={makeMetaDescription()} />
-  <meta property="og:url" content="{import.meta.env.VITE_PUBLIC_BASE_URL}/{urlSlug}" />
-  <meta name="twitter:title" content="{template.title} | Portainer Templates" />
-  <meta name="twitter:description" content={makeMetaDescription()} />
-  <link rel="canonical" href="{import.meta.env.VITE_PUBLIC_BASE_URL}/{urlSlug}" />
+  {#if template}
+    <title>{template.title} | Portainer Templates</title>
+    <meta name="description" content={makeMetaDescription(template)} />
+    <meta property="og:title" content="{template.title} | Portainer Templates" />
+    <meta property="og:description" content={makeMetaDescription(template)} />
+    <meta property="og:url" content="{baseUrl}/{urlSlug}" />
+    <meta name="twitter:title" content="{template.title} | Portainer Templates" />
+    <meta name="twitter:description" content={makeMetaDescription(template)} />
+    <link rel="canonical" href="{baseUrl}/{urlSlug}" />
+  {:else}
+    <title>Template not found | Portainer Templates</title>
+    <meta name="robots" content="noindex" />
+  {/if}
 </svelte:head>
 
 {#if template}
   <section class="summary-section">
     <h1>
-      {#if template.logo} <img src={template.logo} /> {/if}
+      {#if template.logo} <img src={template.logo} alt="{template.title} logo" width="64" height="64" /> {/if}
       {template.title}
     </h1>
-    {#if template.categories || template.category }
+    {#if template.categories}
       <p class="tags">
-        {#each (template.categories || template.category || []) as tag}
+        {#each template.categories as tag (tag)}
           <a href="/?categories={tag}"><span>{tag}</span></a>
         {/each}
       </p>
@@ -61,24 +67,25 @@
     <div class="content">
       <div class="left">
         <p class="description">{template.description}</p>
-        {#await template then returnedTemplate}
-          {#if dockerStats && dockerStats.name}
+        {#if dockerStats && dockerStats.name}
           <DockerStats info={dockerStats} />
-          {/if}
-        {/await}
+        {/if}
       </div>
       <ServiceStats template={template} />
     </div>
   </section>
 
-  {#await services then returnedServices}
-  {#if returnedServices && returnedServices.length > 1}
+  {#if template.note}
+    <Note note={template.note} />
+  {/if}
+
+  {#if services.length > 1}
     <section class="service-section">
       <h2>Services</h2>
       <div class="service-list">
-        {#each returnedServices as service}
+        {#each services as service (service.name)}
           <div class="service-each">
-          <h3>{service.name}</h3>  
+          <h3>{service.name}</h3>
           <div class="service-data">
             <ServiceStats template={service} />
             {#if service.dockerStats && service.dockerStats.name}
@@ -90,14 +97,13 @@
       </div>
     </section>
   {/if}
-  {/await}
 
-  <InstallationInstructions portainerTemplate={template} portainerServices={services || null} />
+  <InstallationInstructions portainerTemplate={template} portainerServices={services.length ? services : null} />
 
   {#if dockerStats?.full_description}
     <MdContent content={dockerStats.full_description} />
-  {:else if services.length > 0}
-    <MdContent multiContent={makeMultiDoc(services)} />
+  {:else if multiDocs.length > 0}
+    <MdContent multiContent={multiDocs} />
   {/if}
 
 {:else}

@@ -1,13 +1,19 @@
 <script lang="ts">
-  export let searchTerm: string;
-  export let isCategoriesVisible: boolean;
-  export let toggleCategories: () => void;
+  let {
+    searchTerm = $bindable(''),
+    isCategoriesVisible,
+    toggleCategories,
+  }: {
+    searchTerm: string;
+    isCategoriesVisible: boolean;
+    toggleCategories: () => void;
+  } = $props();
 </script>
 
 <div class="title-row">
   <h2>Template List</h2>
   <div class="filters">
-    <button on:click={toggleCategories}>
+    <button onclick={toggleCategories}>
       {isCategoriesVisible ? '▲' : '▼'} Categories
     </button>
     <input type="text" placeholder="Search..." bind:value={searchTerm} />
@@ -52,7 +58,7 @@
     transition: all 0.3s ease-in-out;
     cursor: pointer;
     font-size: 0.9rem;
-    &:hover, &.selected {
+    &:hover {
       background: var(--gradient);
     }
   }

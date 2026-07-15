@@ -1,9 +1,11 @@
 <script lang="ts">
-export let searchTerm: string;
-export let selectedCategories: string[];
-export let clearSearch: () => void;
-export let numResults: number;
-export let totalResults: number;
+let { searchTerm, selectedCategories, clearSearch, numResults, totalResults }: {
+  searchTerm: string;
+  selectedCategories: string[];
+  clearSearch: () => void;
+  numResults: number;
+  totalResults: number;
+} = $props();
 </script>
 
 <div class="search-summary">
@@ -22,7 +24,7 @@ export let totalResults: number;
     <p>Click an app to view info, stats and usage docs</p>
   {/if}
   {#if searchTerm || selectedCategories.length}
-    <button on:click={clearSearch}>⨯ Clear Filters</button>
+    <button onclick={clearSearch}>⨯ Clear Filters</button>
   {/if}
 </div>
 

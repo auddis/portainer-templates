@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { TemplateOrService } from '$src/Types';
 
-  export let template: TemplateOrService;
+  let { template }: { template: TemplateOrService } = $props();
 </script>
 
 
@@ -13,7 +13,9 @@
     {:else if template.type === 2}
       <span class="val">Swarm</span>
     {:else if template.type === 3}
-      <span class="val">Kubernetes</span>
+      <span class="val">Compose</span>
+    {:else if template.type === 4}
+      <span class="val">Edge stack</span>
     {:else}
       <span class="val">Unknown</span>
     {/if}
@@ -68,7 +70,13 @@
   {#if template.env}
     <span class="lbl">Env Vars</span>
     <p class="val">
-      {#each template.env as env}<code>{env.name}={env.set || env.value || env.default || '\'\''}</code>{/each}
+      {#each template.env as env}<code>{env.name}={env.value ?? env.default ?? env.select?.find((o) => o.default)?.value ?? '\'\''}</code>{/each}
+    </p>
+  {/if}
+  {#if template.labels && template.labels.length}
+    <span class="lbl">Labels</span>
+    <p class="val">
+      {#each template.labels as label}<code>{label.name}={label.value}</code>{/each}
     </p>
   {/if}
 </div>

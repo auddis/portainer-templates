@@ -3,7 +3,7 @@
   import type { DockerHubResponse } from '$src/Types';
   import Icon from '$lib/Icon.svelte';
 
-  export let info: DockerHubResponse;
+  let { info }: { info: DockerHubResponse } = $props();
 
   const formatBigNumber = (num: number): string => {
     if (!num) return '';
@@ -54,10 +54,14 @@
     ];
     return results;
   };
+
+  // Only show rows that actually have a value, so the card never renders blank fields
+  const stats = $derived(makeRenderData().filter((stat) => !!stat.value));
 </script>
 
+{#if stats.length}
 <div class="stats">
-  {#each makeRenderData() as stat}
+  {#each stats as stat}
     <div class="row">
       <span class="lbl">
         <Icon name={stat.icon} color="var(--accent)" />
@@ -67,6 +71,7 @@
     </div>
   {/each}
 </div>
+{/if}
 
 <style lang="scss">
   .stats {

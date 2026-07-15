@@ -5,7 +5,8 @@ let options = {
   threshold: 0
 }
 
-export const lazyLoad = (image: any, src: string) => {
+export const lazyLoad = (image: HTMLImageElement, src?: string) => {
+  if (!src) return;
   const loaded = () => {
     image.classList.remove("loading");
     image.style.opacity = "1";

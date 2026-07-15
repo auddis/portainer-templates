@@ -1,16 +1,18 @@
 import { templates } from '$src/store';
 import { templatesUrl } from '$src/constants';
+import type { Template } from '$src/Types';
+import type { PageServerLoad } from './$types';
 
-const makeCategories = (templates) => {
+const makeCategories = (allTemplates: Template[]): Record<string, number> => {
   // Get categories from templates
-  const categories = templates.reduce((acc, { categories: templateCategories }) => {
+  const categories = allTemplates.reduce((acc: Record<string, number>, { categories: templateCategories }) => {
     (templateCategories || []).forEach((category) => {
       acc[category] = (acc[category] || 0) + 1;
     });
     return acc;
   }, {});
 
-  // Sort categories by count, and remove categories with only 1 template
+  // Sort categories by count, and remove categories with only a few templates
   const sortedCategories = Object.fromEntries(
     Object.entries(categories)
       .filter(([, value]) => value > 3)
@@ -21,12 +23,12 @@ const makeCategories = (templates) => {
 };
 
 
-export const load = async () => {
+export const load: PageServerLoad = async () => {
   const data = await fetch(templatesUrl).then((res) => res.json());
   templates.set(data.templates);
-  
+
   return {
-    templates: data.templates,
+    templates: data.templates as Template[],
     categories: makeCategories(data.templates),
   }
 };

@@ -1,36 +1,44 @@
 <script lang="ts">
 import { slide } from 'svelte/transition';
 import snarkdown from 'snarkdown';
-export let content: string | null = null;
-export let multiContent: { name: string, content: string, description: string, visible: false }[] | null = null;
 
-let showDocs = false;
+interface MultiDoc { name: string; content: string; description: string; }
 
-const toggleDocs = () => {
-  showDocs = !showDocs;
-};
+let { content = null, multiContent = null }: {
+  content?: string | null;
+  multiContent?: MultiDoc[] | null;
+} = $props();
 
+let showDocs = $state(false);
+let openDocs = $state<Record<number, boolean>>({});
+
+const toggleDocs = () => { showDocs = !showDocs; };
+const toggleDoc = (index: number) => { openDocs[index] = !openDocs[index]; };
+
+const hasContent = $derived(!!content || (!!multiContent && multiContent.length > 0));
 </script>
 
+{#if hasContent}
 <section class="docker-docs">
   <h2>Container Documentation</h2>
   {#if content}
-    <button on:click={toggleDocs}>{ showDocs ? 'Hide' : 'Expand' } Content</button>
+    <button onclick={toggleDocs}>{ showDocs ? 'Hide' : 'Expand' } Content</button>
     {#if showDocs}
       <p transition:slide>{@html snarkdown(content)}</p>
     {/if}
 
-  {:else if multiContent && multiContent.length > 0}
-    {#each multiContent as { name, description, content, visible }}
+  {:else if multiContent}
+    {#each multiContent as { name, description, content }, index}
       <h3>{name} Documentation</h3>
       <p class="desc">{description || ''}</p>
-      <button on:click={() => visible = !visible}>{ visible ? 'Hide' : 'Expand' } {name}</button>
-      {#if visible}
+      <button onclick={() => toggleDoc(index)}>{ openDocs[index] ? 'Hide' : 'Expand' } {name}</button>
+      {#if openDocs[index]}
         <p transition:slide>{@html snarkdown(content)}</p>
       {/if}
     {/each}
   {/if}
 </section>
+{/if}
 
 <style lang="scss">
   .docker-docs {

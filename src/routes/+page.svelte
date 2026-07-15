@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { page } from '$app/stores'
+  import { page } from '$app/state'
 
   import Hero from '$lib/Hero.svelte';
   import ListFilter from '$lib/ListFilter.svelte';
@@ -9,20 +9,20 @@
   import NoResults from '$lib/NoResults.svelte';
   import Footer from '$lib/Footer.svelte';
   import type { Template } from '$src/Types';
+  import type { PageData } from './$types';
+  import { baseUrl } from '$src/constants';
 
-  export let data;
+  let { data }: { data: PageData } = $props();
 
+  const preSelectedCategories = page.url.searchParams.get('categories');
 
+  let searchTerm = $state('');
 
-  const preSelectedCategories = $page.url.searchParams.get('categories');
+  let selectedCategories = $state<string[]>(preSelectedCategories?.split(',') || []);
 
-  let searchTerm = '';
+  let showCategories = $state(!!preSelectedCategories);
 
-  let selectedCategories: string[] = preSelectedCategories?.split(',') || [];
-
-  let showCategories = !!preSelectedCategories || false;
-  
-  $: filteredTemplates = data.templates.filter((template: Template) => {
+  const filteredTemplates = $derived(data.templates.filter((template: Template) => {
     const compareStr = (str1: string, str2: string) =>
       (str1 || '').toLowerCase().includes(str2.toLowerCase());
 
@@ -38,7 +38,7 @@
       compareStr(template.description, searchTerm) ||
       compareStr((template.categories || []).join(''), searchTerm)
     );
-  });
+  }));
 
   const showHideCategoryList = () => {
     showCategories = !showCategories;
@@ -58,6 +58,17 @@
   }
 
 </script>
+
+<svelte:head>
+  <title>Portainer Templates</title>
+  <meta name="description" content="A community-driven library of 400+ 1-click self-hosted apps and stacks, for easy use with Portainer or Docker-Compose" />
+  <meta property="og:title" content="Portainer Templates" />
+  <meta property="og:description" content="A community-driven library of 400+ 1-click self-hosted apps and stacks, for easy use with Portainer or Docker-Compose" />
+  <meta property="og:url" content="{baseUrl}/" />
+  <meta name="twitter:title" content="Portainer Templates" />
+  <meta name="twitter:description" content="A community-driven library of 400+ 1-click self-hosted apps and stacks, for easy use with Portainer or Docker-Compose" />
+  <link rel="canonical" href={baseUrl} />
+</svelte:head>
 
 <!-- Main title, and CTA buttons -->
 <Hero />

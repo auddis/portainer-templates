@@ -3,20 +3,30 @@ export interface PortainerAppTemplate {
   templates: Template[];
 }
 
+export type RestartPolicy = 'always' | 'unless-stopped' | 'on-failure' | 'no';
+
 export interface Template {
-  type: 1 | 2 | 3; // 1 = Container, 2 = Swarm stack, 3 = Compose stack
+  id?: number;
+  type: 1 | 2 | 3 | 4; // 1 = Container, 2 = Swarm stack, 3 = Compose stack, 4 = Compose edge stack
   title: string;
   description: string;
-  categories: string[];
-  platform: string;
+  categories?: string[];
+  platform?: string;
+  logo?: string;
+  name?: string;
+  image?: string;
   command?: string;
   interactive?: boolean;
-  logo: string;
-  image?: string;
-  restart_policy?: 'always' | 'unless-stopped' | 'on-failure' | 'no';
+  restart_policy?: RestartPolicy;
   ports?: string[];
   volumes?: Volume[];
   env?: Environment[];
+  labels?: Label[];
+  network?: string;
+  privileged?: boolean;
+  hostname?: string;
+  note?: string;
+  maintainer?: string;
   repository?: {
     stackfile: string;
     url: string;
@@ -24,33 +34,47 @@ export interface Template {
 }
 
 export interface Volume {
-  bind: string;
   container: string;
+  bind?: string;
   readonly?: boolean;
+}
+
+export interface SelectOption {
+  text: string;
+  value: string;
+  default?: boolean;
 }
 
 export interface Environment {
   name: string;
-  value?: string;
   label?: string;
-  set?: string;
+  description?: string;
+  default?: string;
+  preset?: boolean;
+  select?: SelectOption[];
+  value?: string; // Populated when parsed from a compose stackfile
+}
+
+export interface Label {
+  name: string;
+  value: string;
 }
 
 export interface Service {
   name: string;
   image?: string;
   entrypoint?: string;
-  restart_policy?: 'always' | 'unless-stopped' | 'on-failure' | 'no';
+  restart_policy?: RestartPolicy;
   volumes?: Volume[];
   command?: string;
   ports?: string[];
   build?: string;
   interactive?: boolean;
   env?: Environment[];
-  dockerStats?: DockerHubResponse;
+  dockerStats?: DockerHubResponse | null;
 }
 
-export interface TemplateOrService extends Template, Service {}
+export type TemplateOrService = Partial<Template> & Partial<Service>;
 
 export interface DockerHubResponse {
   user: string; // The user who owns the repository
@@ -80,23 +104,22 @@ export interface DockerHubResponse {
   content_types: string[]; // An array of supported content types for the repository
 }
 
+export interface DockerComposeService {
+  image?: string;
+  ports?: string[];
+  environment?: { [envVar: string]: string };
+  volumes?: string[];
+  restart?: string;
+  command?: string;
+  build?: string | { context: string; dockerfile?: string };
+  networks?: string[] | { [networkName: string]: { aliases?: string[] } };
+  depends_on?: string[];
+  labels?: { [labelName: string]: string };
+}
+
 export interface DockerCompose {
-  version: string;
-  services: {
-    [serviceName: string]: {
-      image: string;
-      ports?: string[];
-      environment?: { [envVar: string]: string };
-      volumes?: string[];
-      restart?: string;
-      command?: string;
-      build?: string | { context: string; dockerfile?: string };
-      networks?: string[] | { [networkName: string]: { aliases?: string[] } };
-      depends_on?: string[];
-      labels?: { [labelName: string]: string };
-    };
-  };
+  version?: string;
+  services: { [serviceName: string]: DockerComposeService };
   networks?: { [networkName: string]: {} };
   volumes?: { [volumeName: string]: {} };
 }
-

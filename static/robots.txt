@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://portainer-templates.as93.net/sitemap.xml

@@ -11,22 +11,24 @@
       convertPortainerStackToDockerCompose,
     } from '$src/utils/template-to-docker-parser';
   import { templatesUrl, gitHubRepo } from '$src/constants';
-  import type { Template, Volume, Service, DockerCompose } from '$src/Types';
+  import type { Template, Service } from '$src/Types';
 
-  export let portainerTemplate: Template | null = null;
-  export let portainerServices: Service[] | null = null;
+  let { portainerTemplate = null, portainerServices = null }: {
+    portainerTemplate?: Template | null;
+    portainerServices?: Service[] | null;
+  } = $props();
 
   const copyToClipboard = (content: string) => {
     navigator.clipboard.writeText(content);
   };
 
-  const dockerRunCommand = portainerTemplate?.image ?
-    generateDockerRunCommand(portainerTemplate) : null;
-  const dockerRunCommands = portainerServices && !dockerRunCommand ?
-    generateDockerRunCommands(portainerServices) : null;
-  const dockerComposeFile = portainerTemplate?.image ?
+  const dockerRunCommand = $derived(portainerTemplate?.image ?
+    generateDockerRunCommand(portainerTemplate) : null);
+  const dockerRunCommands = $derived(portainerServices && !dockerRunCommand ?
+    generateDockerRunCommands(portainerServices) : null);
+  const dockerComposeFile = $derived(portainerTemplate?.image ?
     convertToDockerCompose(portainerTemplate) :
-    (portainerServices ? convertPortainerStackToDockerCompose(portainerServices) : null);
+    (portainerServices ? convertPortainerStackToDockerCompose(portainerServices) : null));
 </script>
 
 
@@ -44,7 +46,7 @@
       <a href="https://docs.docker.com/engine/install/">Docker</a> and
       <a href="https://www.portainer.io/installation/">Portainer</a> are installed, and up-to-date
     </li>
-    <li>Log into your Portainer web UI
+    <li>Log into your Portainer web UI</li>
     <li>Under Settings → App Templates, paste the below URL</li>
     <li>Head to Home → App Templates, and the list of apps will show up</li>
     <li>Select the app you wish to deploy, fill in any config options, and hit Deploy</li>
@@ -52,7 +54,7 @@
 
   <h4>Template Import URL</h4>
   <pre class="template-url">{templatesUrl}</pre>
-  <button on:click={() => copyToClipboard(templatesUrl)}>Copy</button>
+  <button onclick={() => copyToClipboard(templatesUrl)}>Copy</button>
 
   <details>
     <summary>Show Me</summary>
@@ -63,7 +65,7 @@
     <hr />
     <h3>Via Docker Run</h3>
     <div class="docker-run-command">
-      <button class="docker-command-copy" on:click={() => copyToClipboard(dockerRunCommand)}>Copy</button>
+      <button class="docker-command-copy" onclick={() => copyToClipboard(dockerRunCommand)}>Copy</button>
       <Highlight language={shellHighlight} code={dockerRunCommand} />
     </div>
   {/if}
@@ -72,9 +74,9 @@
     <hr />
     <h3>Via Docker Run</h3>
     {#each dockerRunCommands as command, index}
-      <h4>Service #{index + 1} - {portainerServices[index].name}</h4>
+      <h4>Service #{index + 1} - {portainerServices?.[index]?.name}</h4>
       <div class="docker-run-command">
-        <button class="docker-command-copy" on:click={() => copyToClipboard(command)}>Copy</button>
+        <button class="docker-command-copy" onclick={() => copyToClipboard(command)}>Copy</button>
         <Highlight language={shellHighlight} code={command} />
       </div>
     {/each}
@@ -89,7 +91,7 @@
       Use this only as a guide.
     </p>
     <div class="docker-compose-file">
-      <button class="docker-command-copy" on:click={() => copyToClipboard(JSON.stringify(dockerComposeFile, null, 2))}>Copy</button>
+      <button class="docker-command-copy" onclick={() => copyToClipboard(dockerComposeFile)}>Copy</button>
       <Highlight language={yamlHighlight} code={dockerComposeFile} />
     </div>
   {/if}
@@ -195,9 +197,6 @@
       background: var(--card-2);
       position: relative;
       padding: 0.5rem;
-      pre {
-        font-size: 1rem;
-      }
       .docker-command-copy {
         position: absolute;
         right: 0.5rem;

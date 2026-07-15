@@ -1,8 +1,8 @@
 <script lang="ts">
   import Icon from '$lib/Icon.svelte';
-  export let bottom = false;
+  let { bottom = false }: { bottom?: boolean } = $props();
 
-  let footerInfo = {
+  const footerInfo = {
     author: 'Alicia Sykes',
     authorSite: 'https://github.com/lissy93',
     license: 'MIT',

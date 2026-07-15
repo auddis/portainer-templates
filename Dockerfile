@@ -1,4 +1,4 @@
-FROM node:18-alpine AS BUILD_IMAGE
+FROM node:22-alpine AS BUILD_IMAGE
 
 # Set the platform to build image for
 ARG TARGETPLATFORM
@@ -29,7 +29,7 @@ COPY . ./
 RUN npm run build
 
 # Production stage
-FROM node:18-alpine
+FROM node:22-alpine
 
 # Define some ENV Vars
 ENV PORT=80 \
@@ -52,4 +52,4 @@ CMD [ "npm", "start" ]
 EXPOSE ${PORT}
 
 # Run simple healthchecks every 5 mins, to check that everythings still great
-HEALTHCHECK --interval=5m --timeout=5s --start-period=30s CMD yarn health-check
+HEALTHCHECK --interval=5m --timeout=5s --start-period=30s CMD npm run health-check

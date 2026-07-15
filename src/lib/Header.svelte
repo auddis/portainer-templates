@@ -5,7 +5,7 @@
 
 <header>
   <a class="title" href="/">
-    <img src="https://i.ibb.co/hMymwH0/portainer-templates-small.png" />
+    <img src="https://i.ibb.co/hMymwH0/portainer-templates-small.png" alt="Portainer Templates logo" width="40" height="40" />
     <h2>Portainer Templates</h2>
   </a>
   <nav>
@@ -45,12 +45,6 @@
     nav {
       display: flex;
       gap: 1rem;
-    }
-    &.fixed {
-      position: fixed;
-      top: 0;
-      width: calc(100% - 2rem);
-      box-shadow: 0 3px 4px 0 var(--background);
     }
   }
 </style>
