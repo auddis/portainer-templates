@@ -3,9 +3,14 @@ import type { RequestHandler } from '@sveltejs/kit';
 import { templatesUrl, baseUrl } from '$src/constants';
 import type { Template } from '$src/Types';
 
-const fetchData = async () => {
-  const data = await fetch(templatesUrl).then((res) => res.json());
-  return await data.templates.map((d: Template) => `${baseUrl}/${d.title.toLowerCase().replace(/[^a-zA-Z ]/g, "").replaceAll(' ', '-')}`);
+const fetchData = async (): Promise<string[]> => {
+  try {
+    const data = await fetch(templatesUrl).then((res) => res.json());
+    return data.templates.map((d: Template) => `${baseUrl}/${d.title.toLowerCase().replace(/[^a-zA-Z ]/g, "").replaceAll(' ', '-')}`);
+  } catch {
+    // If the templates list is unavailable, still return a valid sitemap with just the homepage
+    return [];
+  }
 };
 
 const generationDate = () => {

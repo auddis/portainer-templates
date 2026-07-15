@@ -50,7 +50,6 @@
 
 
 <style lang="scss">
-  @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@200;400;800&display=swap');
   :global(body) {
     --background: #101828;
     --foreground: #ffffff;

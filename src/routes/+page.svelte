@@ -14,6 +14,15 @@
 
   let { data }: { data: PageData } = $props();
 
+  // Structured data identifying the site (escape < for safe inlining)
+  const jsonLd = JSON.stringify({
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: 'Portainer Templates',
+    url: baseUrl,
+    description: 'A community-driven library of 400+ 1-click self-hosted apps and stacks, for easy use with Portainer or Docker-Compose',
+  }).replace(/</g, '\\u003c');
+
   const preSelectedCategories = page.url.searchParams.get('categories');
 
   let searchTerm = $state('');
@@ -68,6 +77,7 @@
   <meta name="twitter:title" content="Portainer Templates" />
   <meta name="twitter:description" content="A community-driven library of 400+ 1-click self-hosted apps and stacks, for easy use with Portainer or Docker-Compose" />
   <link rel="canonical" href={baseUrl} />
+  {@html '<script type="application/ld+json">' + jsonLd + '</scr' + 'ipt>'}
 </svelte:head>
 
 <!-- Main title, and CTA buttons -->

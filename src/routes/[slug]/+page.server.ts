@@ -1,5 +1,6 @@
 import yaml from 'js-yaml';
 
+import { error } from '@sveltejs/kit';
 import { get } from 'svelte/store';
 import { templatesUrl } from '$src/constants';
 import { templates } from '$src/store';
@@ -99,7 +100,7 @@ const getServices = async (template: Template): Promise<Service[]> => {
 const returnResults = async (allTemplates: Template[], templateSlug: string) => {
   // Find template, based on slug
   let template = findTemplate(allTemplates, templateSlug);
-  if (!template) return { template: null, dockerStats: null, services: [] as Service[] };
+  if (!template) throw error(404, `No template named "${templateSlug}"`);
 
   // Fetch service info from associated stackfile, if it exists
   let services = template.repository ? await getServices(template) : [];
@@ -123,11 +124,15 @@ const returnResults = async (allTemplates: Template[], templateSlug: string) => 
 
 export const load: PageServerLoad = async ({ params }) => {
   const templateSlug = params.slug;
-  const cached = get(templates);
-  if (cached && cached.length > 0) {
-    return returnResults(cached, templateSlug);
+  let list = get(templates);
+  if (!list || list.length === 0) {
+    try {
+      const data = await fetch(templatesUrl).then((res) => res.json());
+      list = data.templates;
+      templates.set(list);
+    } catch {
+      throw error(503, 'Could not load the templates list. Please try again shortly.');
+    }
   }
-  const data = await fetch(templatesUrl).then((res) => res.json());
-  templates.set(data.templates);
-  return returnResults(data.templates, templateSlug);
+  return returnResults(list, templateSlug);
 };

@@ -1,3 +1,5 @@
+import { error } from '@sveltejs/kit';
+import { get } from 'svelte/store';
 import { templates } from '$src/store';
 import { templatesUrl } from '$src/constants';
 import type { Template } from '$src/Types';
@@ -24,11 +26,19 @@ const makeCategories = (allTemplates: Template[]): Record<string, number> => {
 
 
 export const load: PageServerLoad = async () => {
-  const data = await fetch(templatesUrl).then((res) => res.json());
-  templates.set(data.templates);
-
-  return {
-    templates: data.templates as Template[],
-    categories: makeCategories(data.templates),
+  try {
+    const data = await fetch(templatesUrl).then((res) => res.json());
+    templates.set(data.templates);
+    return {
+      templates: data.templates as Template[],
+      categories: makeCategories(data.templates),
+    };
+  } catch {
+    // On a fetch failure, fall back to the last successfully loaded list if we have one
+    const cached = get(templates);
+    if (cached.length) {
+      return { templates: cached, categories: makeCategories(cached) };
+    }
+    throw error(503, 'Could not load the templates list. Please try again shortly.');
   }
 };

@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Template } from '$src/Types';
-  import { lazyLoad } from '$lib/lazy-load';
+  import Logo from '$lib/Logo.svelte';
 
   let { templates }: { templates: Template[] } = $props();
 
@@ -15,7 +15,7 @@
       <h3>{template.title}</h3>
       <div class="template-summary">
         <div class="left">
-          <img class="loading" use:lazyLoad={template.logo} alt={template.title} />
+          <Logo src={template.logo} name={template.title} />
         </div>
         <div class="txt">
           <p class="description" title={template.description}>{template.description}</p>
@@ -55,17 +55,6 @@ section.templates {
     p, h3 {
       margin: 0;
     }
-    img {
-      width: 64px;
-      max-height: 64px;
-      border-radius: 6px;
-      &.loading {
-        padding: 0.2rem;
-        background: var(--card-2);
-        border-radius: 6px;
-        height: 64px;
-      }
-    }
     .description {
       font-style: italic;
       font-weight: 200;
@@ -75,7 +64,7 @@ section.templates {
       display: -webkit-box;
       -webkit-box-orient: vertical;
       -webkit-line-clamp: 5;
-      line-clamp: 5; 
+      line-clamp: 5;
     }
   }
 }

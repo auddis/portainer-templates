@@ -16,7 +16,7 @@
     <button onclick={toggleCategories}>
       {isCategoriesVisible ? '▲' : '▼'} Categories
     </button>
-    <input type="text" placeholder="Search..." bind:value={searchTerm} />
+    <input type="text" placeholder="Search..." aria-label="Search templates" bind:value={searchTerm} />
   </div>
 </div>
 

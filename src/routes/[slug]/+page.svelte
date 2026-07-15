@@ -3,17 +3,17 @@
   import { page } from '$app/state';
 
   import ServiceStats from '$lib/ServiceStats.svelte';
-  import TemplateNotFound from '$lib/TemplateNotFound.svelte';
   import DockerStats from '$lib/DockerStats.svelte';
   import MdContent from '$lib/MdContent.svelte';
   import Note from '$lib/Note.svelte';
+  import Logo from '$lib/Logo.svelte';
   import InstallationInstructions from '$lib/InstallationInstructions.svelte';
 
   import { baseUrl } from '$src/constants';
   import type { Template, Service, DockerHubResponse } from '$src/Types';
 
   const urlSlug = $derived(page.params.slug ?? '');
-  const template = $derived(page.data.template as Template | null);
+  const template = $derived(page.data.template as Template);
   const dockerStats = $derived(page.data.dockerStats as DockerHubResponse | null);
   const services = $derived((page.data.services ?? []) as Service[]);
 
@@ -33,28 +33,37 @@
     + `Portainer-Templates is a community driven repository of Portainer Templates for Self-Hosted apps. \n`
     + `${t.description}`;
 
+  // escape < so the JSON can't break out of the script tag
+  const jsonLd = $derived(JSON.stringify({
+    '@context': 'https://schema.org',
+    '@type': 'SoftwareApplication',
+    name: template.title,
+    description: template.description,
+    applicationCategory: template.categories?.[0] ?? 'DeveloperApplication',
+    operatingSystem: 'Docker',
+    offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+    url: `${baseUrl}/${urlSlug}`,
+    ...(template.logo ? { image: template.logo } : {}),
+  }).replace(/</g, '\\u003c'));
+
 </script>
 
 <svelte:head>
-  {#if template}
-    <title>{template.title} | Portainer Templates</title>
-    <meta name="description" content={makeMetaDescription(template)} />
-    <meta property="og:title" content="{template.title} | Portainer Templates" />
-    <meta property="og:description" content={makeMetaDescription(template)} />
-    <meta property="og:url" content="{baseUrl}/{urlSlug}" />
-    <meta name="twitter:title" content="{template.title} | Portainer Templates" />
-    <meta name="twitter:description" content={makeMetaDescription(template)} />
-    <link rel="canonical" href="{baseUrl}/{urlSlug}" />
-  {:else}
-    <title>Template not found | Portainer Templates</title>
-    <meta name="robots" content="noindex" />
-  {/if}
+  <title>{template.title} | Portainer Templates</title>
+  <meta name="description" content={makeMetaDescription(template)} />
+  <meta property="og:title" content="{template.title} | Portainer Templates" />
+  <meta property="og:description" content={makeMetaDescription(template)} />
+  <meta property="og:url" content="{baseUrl}/{urlSlug}" />
+  <meta name="twitter:title" content="{template.title} | Portainer Templates" />
+  <meta name="twitter:description" content={makeMetaDescription(template)} />
+  <link rel="canonical" href="{baseUrl}/{urlSlug}" />
+  {@html '<script type="application/ld+json">' + jsonLd + '</scr' + 'ipt>'}
 </svelte:head>
 
 {#if template}
   <section class="summary-section">
     <h1>
-      {#if template.logo} <img src={template.logo} alt="{template.title} logo" width="64" height="64" /> {/if}
+      <Logo src={template.logo} name={template.title} />
       {template.title}
     </h1>
     {#if template.categories}
@@ -106,8 +115,6 @@
     <MdContent multiContent={multiDocs} />
   {/if}
 
-{:else}
-  <TemplateNotFound templateName={urlSlug} />
 {/if}
 
 
@@ -128,11 +135,6 @@
       display: flex;
       align-items: center;
       gap: 1rem;
-    }
-    img {
-      border-radius: 6px;
-      width: 64px;
-      max-height: 64px;
     }
     .tags {
       display: flex;
