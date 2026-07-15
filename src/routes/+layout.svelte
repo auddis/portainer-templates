@@ -16,7 +16,7 @@
       : false;
   };
 
-  const showNav = $derived(!['/', '/index'].includes(page.url.pathname));
+  const isHome = $derived(['/', '/index'].includes(page.url.pathname));
 
   async function updateFooter() {
     await tick();
@@ -41,9 +41,7 @@
   <link rel="alternate" type="application/atom+xml" title="Portainer Templates Changelog" href="{baseUrl}/changelog.xml" />
 </svelte:head>
 
-{#if showNav}
-  <Header />
-{/if}
+<Header floating={isHome} />
 <main>
   {@render children()}
 </main>
