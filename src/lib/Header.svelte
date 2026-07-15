@@ -10,6 +10,7 @@
   </a>
   <nav>
     <Button to="/" icon="whale">All Templates</Button>
+    <Button to="/changelog" icon="changelog">Changelog</Button>
     <Button to={gitHubRepo} icon="github">GitHub</Button>
   </nav>
 </header>

@@ -38,6 +38,7 @@
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:image" content="{baseUrl}/banner.png" />
   <meta name="theme-color" content="#0ba5ec" />
+  <link rel="alternate" type="application/atom+xml" title="Portainer Templates Changelog" href="{baseUrl}/changelog.xml" />
 </svelte:head>
 
 {#if showNav}

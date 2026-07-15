@@ -29,6 +29,12 @@ export async function GET() {
     <changefreq>weekly</changefreq>
     <priority>1</priority>
   </url>
+  <url>
+    <loc>${baseUrl}/changelog</loc>
+    <lastmod>${generationDate()}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
     ${data.map((url: string) => `
       <url>
         <loc>${url}</loc>

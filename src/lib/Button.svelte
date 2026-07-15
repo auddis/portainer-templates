@@ -6,15 +6,17 @@
     to?: string;
     action?: () => void;
     target?: string;
+    title?: string;
     icon?: string | null;
     selected?: boolean;
+    size?: 'normal' | 'small';
     children?: Snippet;
   }
-  let { to = '', action = () => {}, target = '_self', icon = null, selected = false, children }: Props = $props();
+  let { to = '', action = () => {}, target = '_self', icon = null, selected = false, size = 'normal', title, children }: Props = $props();
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
-<svelte:element this={to ? 'a' : 'button'} href={to} onclick={action} {target} class:selected>
+<svelte:element this={to ? 'a' : 'button'} href={to} onclick={action} {target} class:selected class:small={size === 'small'} title={title}>
   {#if icon}<Icon name={icon} />{/if}
   {@render children?.()}
 </svelte:element>
@@ -55,6 +57,12 @@
       &::before {
         opacity: 1;
       }
+    }
+
+    &.small {
+      padding: 0.1rem 0.45rem;
+      font-size: 0.8rem;
+      gap: 0.3rem;
     }
   }
 </style>

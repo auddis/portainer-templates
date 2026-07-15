@@ -123,3 +123,11 @@ export interface DockerCompose {
   networks?: { [networkName: string]: {} };
   volumes?: { [volumeName: string]: {} };
 }
+
+export interface ChangelogEntry {
+  version: string;
+  date: string;
+  isRelease: boolean; // minor/major versions get their full release notes shown
+  title: string | null;
+  notes: string | null;
+}
