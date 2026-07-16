@@ -4,8 +4,12 @@ import { error } from '@sveltejs/kit';
 import { get } from 'svelte/store';
 import { templatesUrl } from '$src/constants';
 import { templates } from '$src/store';
-import type { Template, Service, Environment, Volume, DockerHubResponse } from '$src/Types';
+import { getDockerHubStats, getDockerMeta } from '$lib/server/dockerhub';
+import { getProjectStats } from '$lib/server/github';
+import type { Template, Service, Environment, Volume, SimilarApp } from '$src/Types';
 import type { PageServerLoad } from './$types';
+
+type Fetch = typeof globalThis.fetch;
 
 /* Turn a template title into its URL slug */
 const slugify = (title: string) =>
@@ -15,19 +19,6 @@ const slugify = (title: string) =>
 const findTemplate = (allTemplates: Template[], slug: string) => {
   return allTemplates.find((temp) => slugify(temp.title) === slug);
 };
-
-/* With a given image name, fetch stats from DockerHub registry */
-const getDockerHubStats = async (image?: string): Promise<DockerHubResponse | null> => {
-  if (!image) return null;
-  const [imageName] = image.split(':');
-  const [namespace, repo] = imageName.includes('/') ? imageName.split('/') : ['library', imageName];
-  const apiEndpoint = `https://hub.docker.com/v2/repositories/${namespace}/${repo}/`;
-
-  return await fetch(apiEndpoint)
-    .then((res) => res.json())
-    .then((data) => data as DockerHubResponse)
-    .catch(() => null);
-}
 
 /* Compose environment can be a map ({ KEY: value }) or a list ([ "KEY=value" ]) */
 const parseEnv = (environment?: Record<string, unknown> | string[]): Environment[] => {
@@ -65,7 +56,7 @@ type ComposeServiceRaw = {
   environment?: Record<string, unknown> | string[];
 };
 
-const getServices = async (template: Template): Promise<Service[]> => {
+const getServices = async (template: Template, fetch: Fetch): Promise<Service[]> => {
   try {
     if (template?.repository) {
       const { url: repoUrl, stackfile } = template.repository;
@@ -96,14 +87,30 @@ const getServices = async (template: Template): Promise<Service[]> => {
   }
 };
 
+/* Other apps sharing a category, A-Z. Pure local data, so it's free and always there. */
+const findSimilar = (allTemplates: Template[], current: Template, limit = 8): SimilarApp[] => {
+  const cats = new Set(current.categories ?? []);
+  if (!cats.size) return [];
+  return allTemplates
+    .filter((t) => t.title !== current.title && (t.categories ?? []).some((c) => cats.has(c)))
+    .sort((a, b) => a.title.localeCompare(b.title))
+    .slice(0, limit)
+    .map((t) => ({
+      title: t.title,
+      slug: slugify(t.title),
+      logo: t.logo,
+      category: (t.categories ?? []).find((c) => cats.has(c)),
+    }));
+};
+
 /* Format results for returning to component */
-const returnResults = async (allTemplates: Template[], templateSlug: string) => {
+const returnResults = async (allTemplates: Template[], templateSlug: string, fetch: Fetch) => {
   // Find template, based on slug
   let template = findTemplate(allTemplates, templateSlug);
   if (!template) throw error(404, `No template named "${templateSlug}"`);
 
   // Fetch service info from associated stackfile, if it exists
-  let services = template.repository ? await getServices(template) : [];
+  let services = template.repository ? await getServices(template, fetch) : [];
 
   // If only 1 service, merge it with the template
   if (services.length === 1) {
@@ -113,16 +120,29 @@ const returnResults = async (allTemplates: Template[], templateSlug: string) => 
     services = await Promise.all(
       services.map(async (service) => ({
         ...service,
-        dockerStats: await getDockerHubStats(service.image),
+        dockerStats: await getDockerHubStats(service.image, fetch),
       }))
     );
   }
-  // If image specified, fetch Docker image info from DockerHub
-  const dockerStats = template.image ? await getDockerHubStats(template.image) : null;
-  return { template, dockerStats, services };
+
+  // Everything below is independent, so fetch it all at once
+  const [dockerStats, dockerMeta, project] = await Promise.all([
+    getDockerHubStats(template.image, fetch),
+    getDockerMeta(template.image, fetch),
+    getProjectStats(template.description, fetch),
+  ]);
+
+  return {
+    template,
+    dockerStats,
+    dockerMeta,
+    project,
+    services,
+    similar: findSimilar(allTemplates, template),
+  };
 };
 
-export const load: PageServerLoad = async ({ params }) => {
+export const load: PageServerLoad = async ({ params, fetch, setHeaders }) => {
   const templateSlug = params.slug;
   let list = get(templates);
   if (!list || list.length === 0) {
@@ -134,5 +154,7 @@ export const load: PageServerLoad = async ({ params }) => {
       throw error(503, 'Could not load the templates list. Please try again shortly.');
     }
   }
-  return returnResults(list, templateSlug);
+  // Third-party stats change slowly, so let CDNs and browsers hang onto the page
+  setHeaders({ 'cache-control': 'public, max-age=600, s-maxage=3600, stale-while-revalidate=86400' });
+  return returnResults(list, templateSlug, fetch);
 };

@@ -131,3 +131,30 @@ export interface ChangelogEntry {
   title: string | null;
   notes: string | null;
 }
+
+export interface DockerMeta {
+  architectures: string[];
+  size: number | null; // compressed bytes
+  latestVersion: string | null;
+  versions: { name: string; size: number; date: string }[];
+}
+
+export interface ProjectStats {
+  repo: string;
+  url: string;
+  stars: number;
+  forks: number;
+  license: string | null;
+  language: string | null;
+  updatedAt: string;
+  latestRelease: string | null;
+  homepage: string | null;
+  archived: boolean;
+}
+
+export interface SimilarApp {
+  title: string;
+  slug: string;
+  logo?: string;
+  category?: string;
+}

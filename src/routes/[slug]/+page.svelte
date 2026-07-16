@@ -1,21 +1,28 @@
 <script lang="ts">
 
   import { page } from '$app/state';
+  import snarkdown from 'snarkdown';
 
   import ServiceStats from '$lib/ServiceStats.svelte';
   import DockerStats from '$lib/DockerStats.svelte';
+  import ProjectStats from '$lib/ProjectStats.svelte';
+  import Versions from '$lib/Versions.svelte';
+  import SimilarApps from '$lib/SimilarApps.svelte';
   import MdContent from '$lib/MdContent.svelte';
   import Note from '$lib/Note.svelte';
   import Logo from '$lib/Logo.svelte';
   import InstallationInstructions from '$lib/InstallationInstructions.svelte';
 
   import { baseUrl } from '$src/constants';
-  import type { Template, Service, DockerHubResponse } from '$src/Types';
+  import type { Template, Service, DockerHubResponse, DockerMeta, ProjectStats as ProjectStatsType, SimilarApp } from '$src/Types';
 
   const urlSlug = $derived(page.params.slug ?? '');
   const template = $derived(page.data.template as Template);
   const dockerStats = $derived(page.data.dockerStats as DockerHubResponse | null);
+  const dockerMeta = $derived(page.data.dockerMeta as DockerMeta | null);
+  const project = $derived(page.data.project as ProjectStatsType | null);
   const services = $derived((page.data.services ?? []) as Service[]);
+  const similar = $derived((page.data.similar ?? []) as SimilarApp[]);
 
   const makeMultiDoc = (svcs: Service[]) =>
     svcs
@@ -27,6 +34,26 @@
       }));
 
   const multiDocs = $derived(makeMultiDoc(services));
+
+  // Only link out to attribution URLs we can vouch for (http/https, nothing funny)
+  const safeHref = (url?: string): string | null => {
+    if (!url) return null;
+    try {
+      const parsed = new URL(url);
+      return parsed.protocol === 'https:' || parsed.protocol === 'http:' ? parsed.href : null;
+    } catch {
+      return null;
+    }
+  };
+  const maintainerHref = $derived(safeHref(template.maintainer));
+  const sourceHref = $derived(safeHref(template.repository?.url));
+  const maintainerName = $derived.by(() => {
+    if (!maintainerHref) return '';
+    const url = new URL(maintainerHref);
+    return url.hostname.endsWith('github.com')
+      ? (url.pathname.split('/').filter(Boolean)[0] ?? url.hostname)
+      : url.hostname.replace(/^www\./, '');
+  });
 
   const makeMetaDescription = (t: Template) =>
     `Installation guide for ${t.title}, using Portainer, Docker Run or Docker-Compose. `
@@ -75,13 +102,25 @@
     {/if}
     <div class="content">
       <div class="left">
-        <p class="description">{template.description}</p>
-        {#if dockerStats && dockerStats.name}
-          <DockerStats info={dockerStats} />
+        <p class="description">{@html snarkdown(template.description)}</p>
+        {#if (dockerStats && dockerStats.name) || project}
+          <div class="details">
+            {#if dockerStats && dockerStats.name}
+              <DockerStats info={dockerStats} meta={dockerMeta} />
+            {/if}
+            {#if project}
+              <ProjectStats {project} />
+            {/if}
+          </div>
         {/if}
       </div>
       <ServiceStats template={template} />
     </div>
+    {#if maintainerHref || sourceHref}
+      <p class="attribution">
+        {#if maintainerHref}Template by <a href={maintainerHref} target="_blank" rel="noreferrer">{maintainerName}</a>{/if}{#if maintainerHref && sourceHref} · {/if}{#if sourceHref}<a href={sourceHref} target="_blank" rel="noreferrer">Source</a>{/if}
+      </p>
+    {/if}
   </section>
 
   {#if template.note}
@@ -114,6 +153,9 @@
   {:else if multiDocs.length > 0}
     <MdContent multiContent={multiDocs} />
   {/if}
+
+  <Versions versions={dockerMeta?.versions ?? []} />
+  <SimilarApps items={similar} />
 
 {/if}
 
@@ -173,18 +215,43 @@
       display: flex;
       flex-direction: column;
       gap: 1rem;
+      .details {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        @media (min-width: 1080px) {
+          flex-direction: row;
+          flex-wrap: wrap;
+          align-items: stretch;
+          > :global(.stats) {
+            flex: 1 1 15rem;
+          }
+        }
+      }
     }
     p.description {
       background: var(--card-2);
       padding: 1rem;
       border-radius: 6px;
       margin: 0;
+      :global(a) { color: var(--accent); }
+    }
+  }
+
+  .attribution {
+    margin: 1rem 0 0;
+    font-size: 0.85rem;
+    opacity: 0.6;
+    a {
+      color: inherit;
+      text-decoration: underline;
+      &:hover { color: var(--accent); }
     }
   }
 
   .service-section {
     background: var(--card);
-    border-radius: 6px; 
+    border-radius: 6px;
     padding: 1rem;
     h2 {
       margin: 0;

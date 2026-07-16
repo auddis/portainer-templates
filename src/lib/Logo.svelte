@@ -3,11 +3,13 @@
   import Icon from '$lib/Icon.svelte';
 
   let { src, name }: { src?: string; name: string } = $props();
-  let broken = $state(false);
+  // track which src failed, so switching to a new logo clears the broken state on its own
+  let failedSrc = $state<string | undefined>(undefined);
+  const broken = $derived(!!src && src === failedSrc);
 </script>
 
 {#if src && !broken}
-  <img class="loading" use:lazyLoad={src} alt={name} onerror={() => (broken = true)} />
+  <img class="loading" use:lazyLoad={src} alt={name} onerror={() => (failedSrc = src)} />
 {:else}
   <span class="logo-fallback" title="Logo unavailable">
     <Icon name="whale" width="38px" height="38px" color="rgba(255, 255, 255, 0.1)" hoverColor="rgba(255, 255, 255, 0.25)" />
