@@ -12,6 +12,7 @@
   import Note from '$lib/Note.svelte';
   import Logo from '$lib/Logo.svelte';
   import InstallationInstructions from '$lib/InstallationInstructions.svelte';
+  import ReverseProxy from '$lib/ReverseProxy.svelte';
   import Troubleshooting from '$lib/Troubleshooting.svelte';
   import Meta from '$lib/Meta.svelte';
 
@@ -149,7 +150,7 @@
     </section>
   {/if}
 
-  <InstallationInstructions portainerTemplate={template} portainerServices={services.length ? services : null} {stackfile} />
+  <InstallationInstructions portainerTemplate={template} portainerServices={services.length ? services : null} {stackfile} {project} />
 
   {#if dockerStats?.full_description}
     <MdContent content={dockerStats.full_description} />
@@ -160,6 +161,9 @@
   {/if}
 
   <Versions versions={dockerMeta?.versions ?? []} />
+  <svelte:boundary onerror={(e) => console.error('Reverse proxy section failed:', e)}>
+    <ReverseProxy {template} {services} />
+  </svelte:boundary>
   <svelte:boundary onerror={(e) => console.error('Troubleshooting section failed:', e)}>
     <Troubleshooting {template} {dockerMeta} {project} {services} />
   </svelte:boundary>

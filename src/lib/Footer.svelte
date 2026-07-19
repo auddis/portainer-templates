@@ -15,8 +15,11 @@
 <footer class:bottom>
   <p>
     © <a href={footerInfo.authorSite} target="_blank" rel="noreferrer">{footerInfo.author}</a>
-    {new Date().getFullYear()} - Licensed under
-    <a href={footerInfo.licenseLink} target="_blank" rel="noreferrer">{footerInfo.license}</a> -
+    2019-{new Date().getFullYear()}
+    <span class="dot">•</span>
+    Licensed under
+    <a href={footerInfo.licenseLink} target="_blank" rel="noreferrer">{footerInfo.license}</a>
+    <span class="dot">•</span>
     View on <a href={footerInfo.source} target="_blank" rel="noreferrer">
       GitHub <Icon name="github" color="var(--accent)" /></a>
   </p>
@@ -35,6 +38,10 @@
     p {
       margin: 0;
       text-align: center;
+      .dot {
+        opacity: 0.5;
+        padding: 0 0.25rem;
+      }
       a {
         color: var(--accent);
         border-radius: 4px;

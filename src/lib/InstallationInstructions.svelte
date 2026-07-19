@@ -19,14 +19,15 @@
       convertToQuadlet,
     } from '$src/utils/template-to-docker-parser';
   import { templatesUrl, gitHubRepo } from '$src/constants';
-  import type { Template, Service } from '$src/Types';
+  import type { Template, Service, ProjectStats } from '$src/Types';
 
   type CodeLanguage = { name: string; register: LanguageFn };
 
-  let { portainerTemplate = null, portainerServices = null, stackfile = null, heading = 'h2' }: {
+  let { portainerTemplate = null, portainerServices = null, stackfile = null, project = null, heading = 'h2' }: {
     portainerTemplate?: Template | null;
     portainerServices?: Service[] | null;
     stackfile?: string | null;
+    project?: ProjectStats | null;
     heading?: 'h1' | 'h2';
   } = $props();
 
@@ -195,7 +196,13 @@
 {/snippet}
 
 {#snippet alternativeBody()}
-  <p>For more installation options, see the <a href={gitHubRepo}>Documentation</a> in the GitHub repo</p>
+  <p>For more installation options, see the <a href={gitHubRepo}>Documentation</a> in our GitHub repo</p>
+  {#if project?.url}
+    <p>
+      For app-specific guidance, check {portainerTemplate?.title ?? 'the app'}'s own repo at
+      <a href={project.url} target="_blank" rel="noreferrer">{project.repo}</a>
+    </p>
+  {/if}
 {/snippet}
 
 <svelte:head>

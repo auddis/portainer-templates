@@ -2,6 +2,7 @@
   import { gitHubRepo } from '$src/constants';
   import { envValue } from '$src/utils/template-to-docker-parser';
   import type { Template, Service, DockerMeta, ProjectStats } from '$src/Types';
+  import Collapsible from '$lib/Collapsible.svelte';
 
   let { template, dockerMeta = null, project = null, services = [] }: {
     template: Template;
@@ -9,8 +10,6 @@
     project?: ProjectStats | null;
     services?: Service[];
   } = $props();
-
-  let open = $state(false);
 
   const repoLink = (repoUrl?: string | null): { slug: string; href: string } | null => {
     if (!repoUrl) return null;
@@ -93,15 +92,8 @@
   ]);
 </script>
 
-<section class="troubleshooting">
-  <h2>
-    <button type="button" aria-expanded={open} aria-controls="troubleshooting-panel" onclick={() => (open = !open)}>
-      Troubleshooting
-      <span class="chevron" aria-hidden="true"></span>
-    </button>
-  </h2>
-  <div id="troubleshooting-panel" class="panel" class:open inert={!open}>
-    <div class="panel-inner">
+<Collapsible title="Troubleshooting">
+  <div class="troubleshooting">
       <div class="troubleshooting-item">
         <h3>Check the logs first</h3>
         <p>Nine times out of ten the logs tell you exactly what went wrong.</p>
@@ -331,77 +323,21 @@
           {/each}
         </ul>
       </div>
-    </div>
   </div>
-</section>
+</Collapsible>
 
 <style lang="scss">
   .troubleshooting {
-    max-width: 1000px;
-    margin: 1rem auto;
-    padding: 0 1rem;
-    background: var(--card);
-    border-radius: 6px;
-
-    h2 {
-      margin: 0;
-      font-size: 2rem;
-    }
-    h3 {
-      margin: 0;
-      font-size: 1.4rem;
-      font-weight: 600;
-    }
-    button {
-      width: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 1rem;
-      padding: 1rem 0;
-      background: none;
-      border: none;
-      color: inherit;
-      font: inherit;
-      text-align: left;
-      cursor: pointer;
-      transition: color 0.2s ease;
-      &:hover {
-        color: var(--accent);
-      }
-      &:focus-visible {
-        outline: 2px solid var(--accent);
-        outline-offset: -2px;
-      }
-    }
-    .chevron {
-      flex-shrink: 0;
-      width: 0.6rem;
-      height: 0.6rem;
-      border-right: 2px solid var(--accent);
-      border-bottom: 2px solid var(--accent);
-      transform: rotate(45deg);
-      transition: transform 0.25s ease;
-    }
-    button[aria-expanded='true'] .chevron {
-      transform: rotate(-135deg);
-    }
-    .panel {
-      display: grid;
-      grid-template-rows: 0fr;
-      transition: grid-template-rows 0.25s ease;
-      &.open {
-        grid-template-rows: 1fr;
-      }
-    }
-    .panel-inner {
-      overflow: hidden;
-    }
     .troubleshooting-item {
-      padding: 0 0 1rem;
       &:not(:last-child) {
+        padding-bottom: 1rem;
         border-bottom: 2px solid var(--background);
         margin-bottom: 1rem;
+      }
+      h3 {
+        margin: 0;
+        font-size: 1.4rem;
+        font-weight: 500;
       }
       p {
         margin: 0 0 0.25rem;
@@ -424,11 +360,6 @@
         border-radius: 4px;
         font-size: 0.95em;
         overflow-wrap: anywhere;
-      }
-    }
-    @media (prefers-reduced-motion: reduce) {
-      .panel, .chevron, button {
-        transition: none;
       }
     }
   }

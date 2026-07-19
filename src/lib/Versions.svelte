@@ -3,9 +3,11 @@
   import snarkdown from 'snarkdown';
   import type { DockerMeta, DockerVersion } from '$src/Types';
   import { formatBytes, formatDate } from '$lib/format';
+  import Collapsible from '$lib/Collapsible.svelte';
 
   let { versions }: { versions: DockerMeta['versions'] } = $props();
 
+  let sectionOpen = $state(true);
   let open = $state<string | null>(null);
   const toggle = (name: string) => { open = open === name ? null : name; };
 
@@ -18,16 +20,15 @@
 </script>
 
 {#if versions.length}
-<section class="versions">
-  <h2>Recent versions</h2>
-  <ul>
+<Collapsible title="Recent versions" bind:open={sectionOpen}>
+  <ul class="versions">
     {#each versions as version (version.name)}
       <li>
-        <button class:expanded={open === version.name} aria-expanded={open === version.name} onclick={() => toggle(version.name)}>
+        <button class="row" class:expanded={open === version.name} aria-expanded={open === version.name} onclick={() => toggle(version.name)}>
           <code class="tag">{version.name}</code>
           <span class="size">{formatBytes(version.size)}</span>
           <time datetime={version.date}>{formatDate(version.date)}</time>
-          <span class="chevron">▸</span>
+          <span class="row-chevron">▸</span>
         </button>
         {#if open === version.name}
           <div class="details" transition:slide>
@@ -50,33 +51,22 @@
       </li>
     {/each}
   </ul>
-</section>
+</Collapsible>
 {/if}
 
 <style lang="scss">
   .versions {
-    max-width: 1000px;
-    margin: 1rem auto;
-    background: var(--card);
-    border-radius: 6px;
-    padding: 1rem;
-    h2 {
-      margin: 0 0 0.75rem;
-      font-size: 2rem;
-    }
-    ul {
-      list-style: none;
-      margin: 0;
-      padding: 0;
-      display: flex;
-      flex-direction: column;
-      gap: 0.4rem;
-    }
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
     li {
       background: var(--card-2);
       border-radius: 6px;
     }
-    button {
+    .row {
       width: 100%;
       display: grid;
       grid-template-columns: 1fr auto auto auto;
@@ -89,11 +79,11 @@
       font: inherit;
       text-align: left;
       cursor: pointer;
-      .chevron {
+      .row-chevron {
         opacity: 0.7;
         transition: transform 0.2s ease-in-out;
       }
-      &.expanded .chevron {
+      &.expanded .row-chevron {
         transform: rotate(90deg);
       }
     }
@@ -160,6 +150,11 @@
         opacity: 0.7;
         font-style: italic;
         margin: 0;
+      }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .row-chevron {
+        transition: none;
       }
     }
   }
