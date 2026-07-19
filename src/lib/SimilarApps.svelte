@@ -32,6 +32,9 @@
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
       gap: 0.75rem;
+      @media (min-width: 1080px) {
+        margin: 0 -1rem;
+      }
     }
     .card {
       display: flex;

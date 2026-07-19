@@ -129,7 +129,7 @@ const returnResults = async (allTemplates: Template[], templateSlug: string, fet
   const [dockerStats, dockerMeta, project] = await Promise.all([
     getDockerHubStats(template.image, fetch),
     getDockerMeta(template.image, fetch),
-    getProjectStats(template.description, fetch),
+    getProjectStats(template, fetch),
   ]);
 
   return {

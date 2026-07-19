@@ -111,8 +111,14 @@ export interface DockerComposeService {
   volumes?: string[];
   restart?: string;
   command?: string;
+  entrypoint?: string;
   build?: string | { context: string; dockerfile?: string };
   networks?: string[] | { [networkName: string]: { aliases?: string[] } };
+  network_mode?: string;
+  hostname?: string;
+  privileged?: boolean;
+  stdin_open?: boolean;
+  tty?: boolean;
   depends_on?: string[];
   labels?: { [labelName: string]: string };
 }
