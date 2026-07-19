@@ -12,6 +12,7 @@
   import Note from '$lib/Note.svelte';
   import Logo from '$lib/Logo.svelte';
   import InstallationInstructions from '$lib/InstallationInstructions.svelte';
+  import Troubleshooting from '$lib/Troubleshooting.svelte';
 
   import { baseUrl } from '$src/constants';
   import type { Template, Service, DockerHubResponse, DockerMeta, ProjectStats as ProjectStatsType, SimilarApp } from '$src/Types';
@@ -155,6 +156,7 @@
   {/if}
 
   <Versions versions={dockerMeta?.versions ?? []} />
+  <Troubleshooting appRepo={project?.url} templateSource={template.maintainer} />
   <SimilarApps items={similar} />
 
 {/if}
@@ -210,6 +212,10 @@
     gap: 1rem;
     justify-content: space-between;
     margin-top: 1rem;
+    > :global(.stats) {
+      min-width: 15rem;
+      max-width: 18rem;
+    }
     .left {
       flex: 1;
       display: flex;
@@ -259,17 +265,19 @@
     }
     .service-list {
       display: flex;
+      flex-direction: column;
       gap: 2rem;
-      flex-wrap: wrap;
       h3 {
         margin: 0.5rem 0;
         font-weight: 400;
         font-size: 2rem;
       }
-      .service-each {
-        .service-data {
-          display: flex;
-          gap: 1rem;
+      .service-each .service-data {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(min(16rem, 100%), 1fr));
+        gap: 1rem;
+        > :global(.stats) {
+          min-width: 0;
         }
       }
     }

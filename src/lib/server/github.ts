@@ -13,11 +13,14 @@ const PAGES_LINK = /\b([\w-]+)\.github\.io\/([\w.-]+)/i;
 const NOT_A_PROJECT = new Set(['sponsors', 'orgs', 'apps', 'topics', 'about', 'features', 'marketplace']);
 // Owners that republish other people's apps; their repos aren't the upstream project.
 const AGGREGATORS = new Set(['linuxserver']);
+// Monorepos that bundle many apps; not any single upstream project.
+const AGGREGATOR_REPOS = new Set(['pi-hosted/pi-hosted']);
 
 function toRepo(owner: string, repo: string): string | null {
   const o = owner.toLowerCase();
   const name = repo.replace(/\.git$/i, '').replace(/\.+$/, '');
   if (!name || NOT_A_PROJECT.has(o) || AGGREGATORS.has(o)) return null;
+  if (AGGREGATOR_REPOS.has(`${o}/${name.toLowerCase()}`)) return null;
   return `${owner}/${name}`;
 }
 

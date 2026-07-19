@@ -1,8 +1,8 @@
 <script lang="ts">
   import Highlight from "svelte-highlight";
   import yamlHighlight from "svelte-highlight/languages/yaml";
-  import shellHighlight from "svelte-highlight/languages/shell";
   import codeHighlighting from "svelte-highlight/styles/dracula";
+  import { dockerRunHighlight } from "$lib/docker-run-lang";
 
   import {
       generateDockerRunCommand,
@@ -66,7 +66,7 @@
     <h3>Via Docker Run</h3>
     <div class="docker-run-command">
       <button class="docker-command-copy" onclick={() => copyToClipboard(dockerRunCommand)}>Copy</button>
-      <Highlight language={shellHighlight} code={dockerRunCommand} />
+      <Highlight language={dockerRunHighlight} code={dockerRunCommand} />
     </div>
   {/if}
 
@@ -77,7 +77,7 @@
       <h4>Service #{index + 1} - {portainerServices?.[index]?.name}</h4>
       <div class="docker-run-command">
         <button class="docker-command-copy" onclick={() => copyToClipboard(command)}>Copy</button>
-        <Highlight language={shellHighlight} code={command} />
+        <Highlight language={dockerRunHighlight} code={command} />
       </div>
     {/each}
   {/if}

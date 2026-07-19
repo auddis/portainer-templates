@@ -9,6 +9,9 @@ const volumeBinding = (volume: Volume): string => {
   return volume.bind && volume.readonly ? `${binding}:ro` : binding;
 };
 
+// single-quote values so spaces or quotes can't break the command
+const shellQuote = (value: string): string => `'${value.replace(/'/g, "'\\''")}'`;
+
 const envMap = (env: Environment[]): Record<string, string> =>
   Object.fromEntries(env.map((entry) => [entry.name, envValue(entry)]));
 
@@ -23,9 +26,9 @@ const dockerRun = (svc: TemplateOrService): string => {
   if (svc.network) parts.push(`--network ${svc.network}`);
   if (svc.hostname) parts.push(`--hostname ${svc.hostname}`);
   svc.ports?.forEach((port) => parts.push(`-p ${port}`));
-  svc.env?.forEach((env) => parts.push(`-e "${env.name}=${envValue(env)}"`));
+  svc.env?.forEach((env) => parts.push(`-e ${shellQuote(`${env.name}=${envValue(env)}`)}`));
   svc.volumes?.forEach((volume) => parts.push(`-v ${volumeBinding(volume)}`));
-  svc.labels?.forEach((label) => parts.push(`--label "${label.name}=${label.value}"`));
+  svc.labels?.forEach((label) => parts.push(`--label ${shellQuote(`${label.name}=${label.value}`)}`));
   if (svc.entrypoint) parts.push(`--entrypoint ${svc.entrypoint}`);
   if (svc.restart_policy) parts.push(`--restart=${svc.restart_policy}`);
   parts.push(svc.image);
