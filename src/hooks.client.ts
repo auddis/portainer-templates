@@ -6,7 +6,7 @@ import { dev } from '$app/environment';
 if (!dev) {
   Sentry.init({
     dsn: 'https://400f8ec8eaab4315bcda4f150e04f4fc@glitch.as93.net/2',
-    tracesSampleRate: 1.0,
+    tracesSampleRate: 0.1,
     replaysSessionSampleRate: 0.1,
     replaysOnErrorSampleRate: 1.0,
     integrations: [replayIntegration()],

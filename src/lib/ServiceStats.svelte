@@ -19,6 +19,7 @@
       { label: 'Command', values: one(template.command) },
       { label: 'Entrypoint', values: one(template.entrypoint) },
       { label: 'Interactive', values: typeof template.interactive === 'boolean' ? [template.interactive ? 'Yes' : 'No'] : [] },
+      { label: 'Privileged', values: one(template.privileged ? 'Yes' : null) },
       { label: 'Ports', values: template.ports ?? [] },
       { label: 'Volumes', values: (template.volumes ?? []).map(volumeText) },
       { label: 'Env vars', values: (template.env ?? []).map(envText) },

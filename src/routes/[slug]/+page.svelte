@@ -13,6 +13,7 @@
   import Logo from '$lib/Logo.svelte';
   import InstallationInstructions from '$lib/InstallationInstructions.svelte';
   import Troubleshooting from '$lib/Troubleshooting.svelte';
+  import Meta from '$lib/Meta.svelte';
 
   import { baseUrl } from '$src/constants';
   import type { Template, Service, DockerHubResponse, DockerMeta, ProjectStats as ProjectStatsType, SimilarApp } from '$src/Types';
@@ -24,6 +25,7 @@
   const project = $derived(page.data.project as ProjectStatsType | null);
   const services = $derived((page.data.services ?? []) as Service[]);
   const similar = $derived((page.data.similar ?? []) as SimilarApp[]);
+  const readme = $derived((page.data.readme ?? null) as string | null);
 
   const makeMultiDoc = (svcs: Service[]) =>
     svcs
@@ -76,15 +78,14 @@
 
 </script>
 
+<Meta
+  title="{template.title} | Portainer Templates"
+  description={makeMetaDescription(template)}
+  path="/{urlSlug}"
+  image={template.logo}
+/>
+
 <svelte:head>
-  <title>{template.title} | Portainer Templates</title>
-  <meta name="description" content={makeMetaDescription(template)} />
-  <meta property="og:title" content="{template.title} | Portainer Templates" />
-  <meta property="og:description" content={makeMetaDescription(template)} />
-  <meta property="og:url" content="{baseUrl}/{urlSlug}" />
-  <meta name="twitter:title" content="{template.title} | Portainer Templates" />
-  <meta name="twitter:description" content={makeMetaDescription(template)} />
-  <link rel="canonical" href="{baseUrl}/{urlSlug}" />
   {@html '<script type="application/ld+json">' + jsonLd + '</scr' + 'ipt>'}
 </svelte:head>
 
@@ -153,6 +154,8 @@
     <MdContent content={dockerStats.full_description} />
   {:else if multiDocs.length > 0}
     <MdContent multiContent={multiDocs} />
+  {:else if readme}
+    <MdContent content={readme} title="Project Documentation" />
   {/if}
 
   <Versions versions={dockerMeta?.versions ?? []} />

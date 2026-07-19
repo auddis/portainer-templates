@@ -1,7 +1,7 @@
 <script lang="ts">
   import ChangelogEntry from '$lib/ChangelogEntry.svelte';
   import Button from '$lib/Button.svelte';
-  import { baseUrl } from '$src/constants';
+  import Meta from '$lib/Meta.svelte';
   import type { PageData } from './$types';
 
   let { data }: { data: PageData } = $props();
@@ -12,16 +12,7 @@
   `;
 </script>
 
-<svelte:head>
-  <title>Changelog | Portainer Templates</title>
-  <meta name="description" content={description} />
-  <meta property="og:title" content="Changelog | Portainer Templates" />
-  <meta property="og:description" content={description} />
-  <meta property="og:url" content="{baseUrl}/changelog" />
-  <meta name="twitter:title" content="Changelog | Portainer Templates" />
-  <meta name="twitter:description" content={description} />
-  <link rel="canonical" href="{baseUrl}/changelog" />
-</svelte:head>
+<Meta title="Changelog | Portainer Templates" {description} path="/changelog" />
 
 <section class="changelog">
   <div class="head">

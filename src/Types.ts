@@ -154,6 +154,7 @@ export interface ProjectStats {
   language: string | null;
   updatedAt: string;
   latestRelease: string | null;
+  releasedAt: string | null;
   homepage: string | null;
   archived: boolean;
 }

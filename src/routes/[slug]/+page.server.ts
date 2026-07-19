@@ -5,15 +5,12 @@ import { get } from 'svelte/store';
 import { templatesUrl } from '$src/constants';
 import { templates } from '$src/store';
 import { getDockerHubStats, getDockerMeta } from '$lib/server/dockerhub';
-import { getProjectStats } from '$lib/server/github';
+import { getProjectStats, getReadme } from '$lib/server/github';
+import { slugify } from '$lib/format';
 import type { Template, Service, Environment, Volume, SimilarApp } from '$src/Types';
 import type { PageServerLoad } from './$types';
 
 type Fetch = typeof globalThis.fetch;
-
-/* Turn a template title into its URL slug */
-const slugify = (title: string) =>
-  title.toLowerCase().replace(/[^a-zA-Z ]/g, "").replaceAll(' ', '-');
 
 /* Based on the current page name, find the corresponding template */
 const findTemplate = (allTemplates: Template[], slug: string) => {
@@ -132,11 +129,16 @@ const returnResults = async (allTemplates: Template[], templateSlug: string, fet
     getProjectStats(template, fetch),
   ]);
 
+  // No Docker Hub docs to show? Fall back to the project's GitHub readme
+  const hasDocs = !!dockerStats?.full_description || services.some((s) => s.dockerStats?.full_description);
+  const readme = !hasDocs && project ? await getReadme(project.repo, fetch) : null;
+
   return {
     template,
     dockerStats,
     dockerMeta,
     project,
+    readme,
     services,
     similar: findSimilar(allTemplates, template),
   };

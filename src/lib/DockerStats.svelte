@@ -40,6 +40,10 @@
     background: var(--card-2);
     padding: 1rem;
     border-radius: 6px;
+    .row {
+      display: flex;
+      align-items: start;
+    }
     .heading {
       margin: 0 0 0.5rem;
       font-size: 0.8rem;

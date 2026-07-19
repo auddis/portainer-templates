@@ -8,11 +8,14 @@
   import Templates from '$lib/TemplateList.svelte';
   import NoResults from '$lib/NoResults.svelte';
   import Footer from '$lib/Footer.svelte';
+  import Meta from '$lib/Meta.svelte';
   import type { Template } from '$src/Types';
   import type { PageData } from './$types';
   import { baseUrl } from '$src/constants';
 
   let { data }: { data: PageData } = $props();
+
+  const description = 'A community-driven library of 400+ 1-click self-hosted apps and stacks, for easy use with Portainer or Docker-Compose';
 
   // Structured data identifying the site (escape < for safe inlining)
   const jsonLd = JSON.stringify({
@@ -20,7 +23,7 @@
     '@type': 'WebSite',
     name: 'Portainer Templates',
     url: baseUrl,
-    description: 'A community-driven library of 400+ 1-click self-hosted apps and stacks, for easy use with Portainer or Docker-Compose',
+    description,
   }).replace(/</g, '\\u003c');
 
   const preSelectedCategories = page.url.searchParams.get('categories');
@@ -68,15 +71,9 @@
 
 </script>
 
+<Meta title="Portainer Templates" {description} />
+
 <svelte:head>
-  <title>Portainer Templates</title>
-  <meta name="description" content="A community-driven library of 400+ 1-click self-hosted apps and stacks, for easy use with Portainer or Docker-Compose" />
-  <meta property="og:title" content="Portainer Templates" />
-  <meta property="og:description" content="A community-driven library of 400+ 1-click self-hosted apps and stacks, for easy use with Portainer or Docker-Compose" />
-  <meta property="og:url" content="{baseUrl}/" />
-  <meta name="twitter:title" content="Portainer Templates" />
-  <meta name="twitter:description" content="A community-driven library of 400+ 1-click self-hosted apps and stacks, for easy use with Portainer or Docker-Compose" />
-  <link rel="canonical" href={baseUrl} />
   {@html '<script type="application/ld+json">' + jsonLd + '</scr' + 'ipt>'}
 </svelte:head>
 

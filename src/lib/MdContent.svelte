@@ -4,9 +4,10 @@ import snarkdown from 'snarkdown';
 
 interface MultiDoc { name: string; content: string; description: string; }
 
-let { content = null, multiContent = null }: {
+let { content = null, multiContent = null, title = 'Container Documentation' }: {
   content?: string | null;
   multiContent?: MultiDoc[] | null;
+  title?: string;
 } = $props();
 
 let showDocs = $state(false);
@@ -20,7 +21,7 @@ const hasContent = $derived(!!content || (!!multiContent && multiContent.length 
 
 {#if hasContent}
 <section class="docker-docs">
-  <h2>Container Documentation</h2>
+  <h2>{title}</h2>
   {#if content}
     <button onclick={toggleDocs}>{ showDocs ? 'Hide' : 'Expand' } Content</button>
     {#if showDocs}

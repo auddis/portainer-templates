@@ -1,6 +1,6 @@
 import { env } from '$env/dynamic/private';
 import { cached } from './cache';
-import { fetchJson } from './http';
+import { fetchJson, fetchText } from './http';
 import type { ProjectStats, Template } from '$src/Types';
 
 const DAY = 86_400_000;
@@ -65,7 +65,13 @@ interface GhRepo {
 }
 interface GhRelease {
   tag_name: string;
+  published_at: string;
 }
+
+const ghHeaders = (accept: string) => ({
+  Accept: accept,
+  ...(env.GITHUB_TOKEN ? { Authorization: `Bearer ${env.GITHUB_TOKEN}` } : {}),
+});
 
 export function getProjectStats(
   template: Pick<Template, 'description' | 'note' | 'image'>,
@@ -75,11 +81,7 @@ export function getProjectStats(
   if (!repos.length) return Promise.resolve(null);
 
   return cached(`gh:${repos.join(',')}`, DAY, async () => {
-    const token = env.GITHUB_TOKEN;
-    const headers = {
-      Accept: 'application/vnd.github+json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    };
+    const headers = ghHeaders('application/vnd.github+json');
     for (const repo of repos) {
       const data = await fetchJson<GhRepo>(`https://api.github.com/repos/${repo}`, { headers, fetch });
       if (!data) continue;
@@ -95,10 +97,39 @@ export function getProjectStats(
         language: data.language,
         updatedAt: data.pushed_at,
         latestRelease: release?.tag_name ?? null,
+        releasedAt: release?.published_at ?? null,
         homepage: httpsOnly(data.homepage),
         archived: data.archived,
       };
     }
     return null;
+  });
+}
+
+const isAbsolute = (url: string) => /^[a-z][\w+.-]*:|^\/\/|^#/i.test(url);
+
+// Point the README's relative links/images back at the repo, so they don't 404 here
+function absolutify(md: string, repo: string): string {
+  const raw = `https://raw.githubusercontent.com/${repo}/HEAD/`;
+  const blob = `https://github.com/${repo}/blob/HEAD/`;
+  const resolve = (base: string, url: string) => {
+    try {
+      return new URL(url.replace(/^\//, ''), base).href;
+    } catch {
+      return url;
+    }
+  };
+  return md
+    .replace(/(!\[[^\]]*\]\()([^)\s]+)/g, (m, pre, url) => (isAbsolute(url) ? m : pre + resolve(raw, url)))
+    .replace(/((?<!!)\[[^\]]*\]\()([^)\s]+)/g, (m, pre, url) => (isAbsolute(url) ? m : pre + resolve(blob, url)))
+    .replace(/(<(?:img|source)[^>]*\ssrc=")([^"]+)/gi, (m, pre, url) => (isAbsolute(url) ? m : pre + resolve(raw, url)))
+    .replace(/(<a[^>]*\shref=")([^"]+)/gi, (m, pre, url) => (isAbsolute(url) ? m : pre + resolve(blob, url)));
+}
+
+export function getReadme(repo: string, fetch: typeof globalThis.fetch): Promise<string | null> {
+  return cached(`gh:readme:${repo}`, DAY, async () => {
+    const url = `https://api.github.com/repos/${repo}/readme`;
+    const md = await fetchText(url, { headers: ghHeaders('application/vnd.github.raw+json'), fetch });
+    return md ? absolutify(md, repo) : null;
   });
 }

@@ -14,7 +14,7 @@
       { icon: 'fork', label: 'Forks', value: formatBigNumber(project.forks) },
       { icon: 'code', label: 'Language', value: project.language },
       { icon: 'license', label: 'License', value: project.license },
-      { icon: 'changelog', label: 'Latest', value: project.latestRelease, href: project.latestRelease && `${project.url}/releases/tag/${project.latestRelease}` },
+      { icon: 'changelog', label: 'Latest', value: project.latestRelease && (project.releasedAt ? `${project.latestRelease} · ${timeAgo(project.releasedAt)}` : project.latestRelease), href: project.latestRelease && `${project.url}/releases/tag/${project.latestRelease}` },
       { icon: 'updated', label: 'Updated', value: timeAgo(project.updatedAt) },
       { icon: 'link', label: 'Website', value: project.homepage?.replace(/^https?:\/\//, '') ?? null, href: project.homepage },
       { icon: 'status', label: 'Status', value: project.archived ? 'archived' : null },
@@ -46,6 +46,10 @@
     background: var(--card-2);
     padding: 1rem;
     border-radius: 6px;
+    .row {
+      display: flex;
+      align-items: start;
+    }
     .heading {
       margin: 0 0 0.5rem;
       font-size: 0.8rem;

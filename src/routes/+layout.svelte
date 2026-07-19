@@ -34,9 +34,7 @@
 <!-- Site-wide tags; page-specific title/description/canonical live in each page's <svelte:head> -->
 <svelte:head>
   <meta property="og:type" content="website" />
-  <meta property="og:image" content="{baseUrl}/banner.png" />
-  <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:image" content="{baseUrl}/banner.png" />
+  <meta property="og:site_name" content="Portainer Templates" />
   <meta name="theme-color" content="#0ba5ec" />
   <link rel="alternate" type="application/atom+xml" title="Portainer Templates Changelog" href="{baseUrl}/changelog.xml" />
 </svelte:head>

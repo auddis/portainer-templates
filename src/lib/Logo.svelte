@@ -28,6 +28,8 @@
       background: linear-gradient(90deg, var(--card-2) 25%, rgba(255, 255, 255, 0.06) 37%, var(--card-2) 63%);
       background-size: 400% 100%;
       animation: logo-skeleton 1.4s ease infinite;
+      font-size: 1rem;
+      text-align: center;
       @media (prefers-reduced-motion: reduce) {
         animation: none;
       }

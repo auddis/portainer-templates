@@ -1,6 +1,8 @@
 {
   "name": "Portainer Templates",
   "short_name": "Portainer Templates",
+  "description": "A community-driven library of 400+ 1-click self-hosted apps and stacks, for easy use with Portainer or Docker-Compose",
+  "start_url": "/",
   "icons": [
     {
       "src": "/android-chrome-192x192.png",
@@ -13,7 +15,7 @@
       "type": "image/png"
     }
   ],
-  "theme_color": "#6EDFDE",
+  "theme_color": "#0ba5ec",
   "background_color": "#101828",
   "display": "standalone"
 }

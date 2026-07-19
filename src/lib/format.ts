@@ -1,3 +1,6 @@
+export const slugify = (title: string): string =>
+  title.toLowerCase().replace(/[^a-zA-Z ]/g, '').replaceAll(' ', '-');
+
 export const formatBigNumber = (num: number): string => {
   if (!num) return '';
   const units = ['k', 'M', 'B'];

@@ -13,9 +13,10 @@
   import { templatesUrl, gitHubRepo } from '$src/constants';
   import type { Template, Service } from '$src/Types';
 
-  let { portainerTemplate = null, portainerServices = null }: {
+  let { portainerTemplate = null, portainerServices = null, heading = 'h2' }: {
     portainerTemplate?: Template | null;
     portainerServices?: Service[] | null;
+    heading?: 'h1' | 'h2';
   } = $props();
 
   const copyToClipboard = (content: string) => {
@@ -37,7 +38,7 @@
 </svelte:head>
 
 <section>
-  <h2>Installation</h2>
+  <svelte:element this={heading} class="title">Installation</svelte:element>
 
   <h3>Via Portainer</h3>
   <ol>
@@ -110,7 +111,7 @@
     margin: 1rem auto;
     max-width: 1000px;
     transition: all 0.2s ease-in-out;
-    h2 {
+    .title {
       margin: 0;
       font-size: 2rem;
     }

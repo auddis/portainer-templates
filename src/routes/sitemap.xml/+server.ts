@@ -1,22 +1,16 @@
-import type { RequestHandler } from '@sveltejs/kit';
-
 import { templatesUrl, baseUrl } from '$src/constants';
+import { slugify } from '$lib/format';
 import type { Template } from '$src/Types';
 
 const fetchData = async (): Promise<string[]> => {
   try {
     const data = await fetch(templatesUrl).then((res) => res.json());
-    return data.templates.map((d: Template) => `${baseUrl}/${d.title.toLowerCase().replace(/[^a-zA-Z ]/g, "").replaceAll(' ', '-')}`);
+    return data.templates.map((d: Template) => `${baseUrl}/${slugify(d.title)}`);
   } catch {
     // If the templates list is unavailable, still return a valid sitemap with just the homepage
     return [];
   }
 };
-
-const generationDate = () => {
-  const date = new Date();
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-}
 
 export async function GET() {
   const data = await fetchData();
@@ -24,21 +18,23 @@ export async function GET() {
   const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
   <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>${baseUrl}</loc>
-    <lastmod>${generationDate()}</lastmod>
+    <loc>${baseUrl}/</loc>
     <changefreq>weekly</changefreq>
     <priority>1</priority>
   </url>
   <url>
+    <loc>${baseUrl}/usage</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>${baseUrl}/changelog</loc>
-    <lastmod>${generationDate()}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
     ${data.map((url: string) => `
       <url>
         <loc>${url}</loc>
-        <lastmod>${generationDate()}</lastmod>
         <changefreq>weekly</changefreq>
         <priority>0.8</priority>
       </url>`)

@@ -1,17 +1,14 @@
 <script lang="ts">
   import type { Template } from '$src/Types';
   import Logo from '$lib/Logo.svelte';
+  import { slugify } from '$lib/format';
 
   let { templates }: { templates: Template[] } = $props();
-
-  const slugify = (title: string) => {
-    return `/${title.toLowerCase().replace(/[^a-zA-Z ]/g, "").replaceAll(' ', '-')}`;
-  }
 </script>
 
 <section class="templates">
   {#each templates as template (template.title)}
-    <a class="template-card" href={slugify(template.title)}>
+    <a class="template-card" href="/{slugify(template.title)}">
       <h3>{template.title}</h3>
       <div class="template-summary">
         <div class="left">
