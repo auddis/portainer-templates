@@ -5,9 +5,9 @@ import { get } from 'svelte/store';
 import { templatesUrl } from '$src/constants';
 import { templates } from '$src/store';
 import { getDockerHubStats, getDockerMeta } from '$lib/server/dockerhub';
-import { getProjectStats, getReadme } from '$lib/server/github';
+import { getProjectStats, getReadme, getReleases } from '$lib/server/github';
 import { slugify } from '$lib/format';
-import type { Template, Service, Environment, Volume, SimilarApp } from '$src/Types';
+import type { Template, Service, Environment, Volume, SimilarApp, DockerMeta, ProjectStats } from '$src/Types';
 import type { PageServerLoad } from './$types';
 
 type Fetch = typeof globalThis.fetch;
@@ -84,6 +84,19 @@ const getServices = async (template: Template, fetch: Fetch): Promise<{ services
   }
 };
 
+/* Match docker tags to github releases, so each version can show its release notes */
+const withReleaseNotes = async (meta: DockerMeta | null, project: ProjectStats | null, fetch: Fetch): Promise<DockerMeta | null> => {
+  if (!meta?.versions.length || !project) return meta;
+  const releases = (await getReleases(project.repo, fetch)) ?? [];
+  const bare = (tag: string) => tag.replace(/^v/i, '');
+  const byTag = new Map(releases.map((rel) => [bare(rel.tag_name), rel]));
+  const versions = meta.versions.map((version) => {
+    const rel = byTag.get(bare(version.name));
+    return rel ? { ...version, release: { title: rel.name, notes: rel.body, url: rel.html_url } } : version;
+  });
+  return { ...meta, versions };
+};
+
 /* Other apps sharing a category, A-Z. Pure local data, so it's free and always there. */
 const findSimilar = (allTemplates: Template[], current: Template, limit = 8): SimilarApp[] => {
   const cats = new Set(current.categories ?? []);
@@ -123,11 +136,12 @@ const returnResults = async (allTemplates: Template[], templateSlug: string, fet
   }
 
   // Everything below is independent, so fetch it all at once
-  const [dockerStats, dockerMeta, project] = await Promise.all([
+  const [dockerStats, rawMeta, project] = await Promise.all([
     getDockerHubStats(template.image, fetch),
     getDockerMeta(template.image, fetch),
     getProjectStats(template, fetch),
   ]);
+  const dockerMeta = await withReleaseNotes(rawMeta, project, fetch);
 
   // No Docker Hub docs to show? Fall back to the project's GitHub readme
   const hasDocs = !!dockerStats?.full_description || services.some((s) => s.dockerStats?.full_description);

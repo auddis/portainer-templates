@@ -106,6 +106,22 @@ export function getProjectStats(
   });
 }
 
+export interface GhReleaseNotes {
+  tag_name: string;
+  name: string | null;
+  body: string | null;
+  html_url: string;
+}
+
+export function getReleases(repo: string, fetch: typeof globalThis.fetch): Promise<GhReleaseNotes[] | null> {
+  return cached(`gh:releases:${repo}`, DAY, () =>
+    fetchJson<GhReleaseNotes[]>(`https://api.github.com/repos/${repo}/releases?per_page=30`, {
+      headers: ghHeaders('application/vnd.github+json'),
+      fetch,
+    }),
+  );
+}
+
 const isAbsolute = (url: string) => /^[a-z][\w+.-]*:|^\/\/|^#/i.test(url);
 
 // Point the README's relative links/images back at the repo, so they don't 404 here

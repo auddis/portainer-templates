@@ -49,18 +49,21 @@ function isVersion(tag: string): boolean {
 
 const ARCH_ORDER = ['amd64', 'arm64', 'arm/v7', 'arm/v6', '386', 'ppc64le', 's390x', 'riscv64'];
 
+const rank = (x: string) => (ARCH_ORDER.indexOf(x) < 0 ? 99 : ARCH_ORDER.indexOf(x));
+const sortArches = (arches: Iterable<string>) =>
+  [...arches].sort((a, b) => rank(a) - rank(b) || a.localeCompare(b));
+
+const tagPlatforms = (tag: DhTag): string[] =>
+  sortArches(new Set(
+    (tag.images || [])
+      .filter((img) => img.architecture && img.architecture !== 'unknown' && img.os !== 'unknown')
+      .map((img) => (img.variant ? `${img.architecture}/${img.variant}` : img.architecture)),
+  ));
+
 export function summarise(results: DhTag[]): DockerMeta {
   const archSet = new Set<string>();
-  for (const tag of results) {
-    for (const img of tag.images || []) {
-      if (!img.architecture || img.architecture === 'unknown' || img.os === 'unknown') continue;
-      archSet.add(img.variant ? `${img.architecture}/${img.variant}` : img.architecture);
-    }
-  }
-  const architectures = [...archSet].sort((a, b) => {
-    const rank = (x: string) => (ARCH_ORDER.indexOf(x) < 0 ? 99 : ARCH_ORDER.indexOf(x));
-    return rank(a) - rank(b) || a.localeCompare(b);
-  });
+  for (const tag of results) tagPlatforms(tag).forEach((arch) => archSet.add(arch));
+  const architectures = sortArches(archSet);
 
   const versions: DockerMeta['versions'] = [];
   const seen = new Set<string>();
@@ -68,7 +71,7 @@ export function summarise(results: DhTag[]): DockerMeta {
     if (versions.length >= 5) break;
     if (!isVersion(tag.name) || seen.has(tag.name)) continue;
     seen.add(tag.name);
-    versions.push({ name: tag.name, size: tag.full_size, date: tag.tag_last_pushed });
+    versions.push({ name: tag.name, size: tag.full_size, date: tag.tag_last_pushed, platforms: tagPlatforms(tag) });
   }
 
   const size = versions[0]?.size || results[0]?.full_size || null;

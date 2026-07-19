@@ -6,6 +6,7 @@
   import codeHighlighting from "svelte-highlight/styles/dracula";
   import { dockerRunHighlight } from "$lib/docker-run-lang";
   import type { LanguageFn } from "highlight.js";
+  import type { Snippet } from "svelte";
 
   import {
       appSlug,
@@ -61,6 +62,18 @@
   const kubernetesManifests = $derived(portainerTemplate ? convertToKubernetes(portainerTemplate) : null);
   const quadletUnit = $derived(portainerTemplate ? convertToQuadlet(portainerTemplate) : null);
   const quadletStartCommand = $derived(`systemctl --user daemon-reload\nsystemctl --user start ${slug}`);
+
+  let openSection: string | null = $state('via-portainer');
+
+  const sectionIcons: Record<string, string> = {
+    'via-portainer': 'portainer.png',
+    'docker-run': 'docker.png',
+    'docker-compose': 'docker-compose.png',
+    'docker-swarm': 'docker-swarm.png',
+    'kubernetes': 'kubernetes.png',
+    'podman-quadlet': 'podman.png',
+    'alternative-methods': 'github-logo-blue.png',
+  };
 </script>
 
 {#snippet codeBlock(code: string, language: CodeLanguage)}
@@ -70,15 +83,23 @@
   </div>
 {/snippet}
 
+<!-- one shared state key keeps the accordion exclusive -->
+{#snippet accordionItem(title: string, body: Snippet)}
+  {@const id = title.toLowerCase().replace(/\W+/g, '-')}
+  {@const open = openSection === id}
+  <div class="accordion" class:open>
+    <h3>
+      <img class="install-icon" width="42" alt="" src="https://cdn.as93.net/icons/{sectionIcons[id]}/w128" />
+      <button id="{id}-header" class="accordion-toggle" aria-expanded={open}
+        aria-controls="{id}-panel" onclick={() => openSection = open ? null : id}>{title}</button>
+    </h3>
+    <div class="panel-wrap" id="{id}-panel" role="region" aria-labelledby="{id}-header" inert={!open}>
+      <div class="panel">{@render body()}</div>
+    </div>
+  </div>
+{/snippet}
 
-<svelte:head>
-  {@html codeHighlighting}
-</svelte:head>
-
-<section>
-  <svelte:element this={heading} class="title">Installation</svelte:element>
-
-  <h3>Via Portainer</h3>
+{#snippet portainerBody()}
   <ol>
     <li>
       Ensure both
@@ -90,45 +111,37 @@
     <li>Head to Home → App Templates, and the list of apps will show up</li>
     <li>Select the app you wish to deploy, fill in any config options, and hit Deploy</li>
   </ol>
-
   <h4>Template Import URL</h4>
   <pre class="template-url">{templatesUrl}</pre>
   <button onclick={() => copyToClipboard(templatesUrl)}>Copy</button>
-
   <details>
     <summary>Show Me</summary>
     <img class="demo" src="https://cdn.as93.net/project-screens/portainer-templates-installation" alt="demo" />
   </details>
+{/snippet}
 
+{#snippet dockerRunBody()}
   {#if dockerRunCommand}
-    <hr />
-    <h3>Docker Run</h3>
     {@render codeBlock(dockerRunCommand, dockerRunHighlight)}
-  {/if}
-
-  {#if dockerRunCommands && dockerRunCommands.length > 0}
-    <hr />
-    <h3>Docker Run</h3>
+  {:else if dockerRunCommands}
     {#each dockerRunCommands as command, index}
       <h4>Service #{index + 1} - {portainerServices?.[index]?.name}</h4>
       {@render codeBlock(command, dockerRunHighlight)}
     {/each}
   {/if}
+{/snippet}
 
+{#snippet composeBody()}
   {#if actualComposeFile}
-    <hr />
-    <h3>Docker Compose</h3>
     <p class="instructions">
       If the stack expects env vars, set them or add them to a <code>.env</code> file first.
     </p>
     {@render codeBlock(actualComposeFile, yamlHighlight)}
     <p class="instructions">
-      Or, use the original compose file, strait from the template repo. Deploy with:
+      Or, use the original compose file, straight from the template repo. Deploy with:
     </p>
     {@render codeBlock(composeCloneCommand, bashHighlight)}
   {:else if generatedComposeFile}
-    <hr />
-    <h3>Docker Compose</h3>
     <p class="instructions">
       Save this file as <code>compose.yaml</code> and run <code>docker compose up -d</code>
       <br>
@@ -136,58 +149,85 @@
     </p>
     {@render codeBlock(generatedComposeFile, yamlHighlight)}
   {/if}
+{/snippet}
 
+{#snippet swarmBody()}
   {#if swarmStackfile}
-    <hr />
-    <h3>Docker Swarm</h3>
     <p class="instructions">
       This template is a swarm stack, using the compose file below. From a manager node, run:
     </p>
     {@render codeBlock(swarmCloneCommand, bashHighlight)}
     {@render codeBlock(swarmStackfile, yamlHighlight)}
   {:else if generatedSwarmStack}
-    <hr />
-    <h3>Docker Swarm</h3>
     <p class="instructions">
       Save this file as <code>{slug}-stack.yml</code>, then from a manager node, run
       <code>docker stack deploy -c {slug}-stack.yml {slug}</code>
     </p>
     {@render codeBlock(generatedSwarmStack, yamlHighlight)}
   {/if}
+{/snippet}
+
+{#snippet kubernetesBody()}
+  <p class="instructions">
+    Save each file below into a folder, then run <code>kubectl apply -f .</code>
+    <br>
+    Written for k3s, but works on any cluster: bind mounts use hostPath, named volumes get a
+    persistent volume claim, and ports are exposed via a LoadBalancer service.
+  </p>
+  {#each kubernetesManifests ?? [] as manifest (manifest.file)}
+    <h4><code>{manifest.file}</code></h4>
+    {@render codeBlock(manifest.content, yamlHighlight)}
+  {/each}
+{/snippet}
+
+{#snippet quadletBody()}
+  <p class="instructions">
+    Save this file as <code>~/.config/containers/systemd/{slug}.container</code>
+  </p>
+  {#if quadletUnit}
+    {@render codeBlock(quadletUnit, iniHighlight)}
+  {/if}
+  <p class="instructions">Then reload systemd and start the service:</p>
+  {@render codeBlock(quadletStartCommand, bashHighlight)}
+  <p class="instructions">
+    For a system-wide service, use <code>/etc/containers/systemd/</code> and drop <code>--user</code>.
+  </p>
+{/snippet}
+
+{#snippet alternativeBody()}
+  <p>For more installation options, see the <a href={gitHubRepo}>Documentation</a> in the GitHub repo</p>
+{/snippet}
+
+<svelte:head>
+  {@html codeHighlighting}
+</svelte:head>
+
+<section>
+  <svelte:element this={heading} class="title">Installation</svelte:element>
+
+  {@render accordionItem('Via Portainer', portainerBody)}
+
+  {#if dockerRunCommand || dockerRunCommands?.length}
+    {@render accordionItem('Docker Run', dockerRunBody)}
+  {/if}
+
+  {#if actualComposeFile || generatedComposeFile}
+    {@render accordionItem('Docker Compose', composeBody)}
+  {/if}
+
+  {#if swarmStackfile || generatedSwarmStack}
+    {@render accordionItem('Docker Swarm', swarmBody)}
+  {/if}
 
   {#if kubernetesManifests?.length}
-    <hr />
-    <h3>Kubernetes</h3>
-    <p class="instructions">
-      Save each file below into a folder, then run <code>kubectl apply -f .</code>
-      <br>
-      Written for k3s, but works on any cluster: bind mounts use hostPath, named volumes get a
-      persistent volume claim, and ports are exposed via a LoadBalancer service.
-    </p>
-    {#each kubernetesManifests as manifest (manifest.file)}
-      <h4><code>{manifest.file}</code></h4>
-      {@render codeBlock(manifest.content, yamlHighlight)}
-    {/each}
+    {@render accordionItem('Kubernetes', kubernetesBody)}
   {/if}
 
   {#if quadletUnit}
-    <hr />
-    <h3>Podman Quadlet</h3>
-    <p class="instructions">
-      Save this file as <code>~/.config/containers/systemd/{slug}.container</code>
-    </p>
-    {@render codeBlock(quadletUnit, iniHighlight)}
-    <p class="instructions">Then reload systemd and start the service:</p>
-    {@render codeBlock(quadletStartCommand, bashHighlight)}
-    <p class="instructions">
-      For a system-wide service, use <code>/etc/containers/systemd/</code> and drop <code>--user</code>.
-    </p>
+    {@render accordionItem('Podman Quadlet', quadletBody)}
   {/if}
 
-  <hr />
-  <h3>Alternative Methods</h3>
-  <p>For more installation options, see the <a href={gitHubRepo}>Documentation</a> in the GitHub repo</p>
-
+  {@render accordionItem('Alternative Methods', alternativeBody)}
 </section>
 
 <style lang="scss">
@@ -199,12 +239,101 @@
     max-width: 1000px;
     transition: all 0.2s ease-in-out;
     .title {
-      margin: 0;
+      margin: 0 0 0.5rem;
       font-size: 2rem;
     }
-    h3 {
-      font-size: 1.5rem;
-      margin: 0.5rem 0;
+    .accordion {
+      border-bottom: 2px solid var(--card-2);
+      h3 {
+        margin: 0;
+        font-size: 1.5rem;
+        display: flex;
+        justify-content: flex-start;
+        align-items: center;
+        gap: 0.25rem;
+        img {
+          width: 2.2rem;
+          max-height: 2.2rem;
+        }
+      }
+      .accordion-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.5rem;
+        width: 100%;
+        padding: 0.75rem 0.25rem;
+        background: none;
+        border-radius: 6px;
+        color: inherit;
+        font: inherit;
+        font-weight: 500;
+        text-align: left;
+        &:hover {
+          background: none;
+          transform: none;
+          color: var(--accent);
+        }
+        &:focus-visible {
+          outline: 2px solid var(--accent);
+          outline-offset: 2px;
+        }
+        &::after {
+          content: '';
+          flex-shrink: 0;
+          width: 0.5rem;
+          height: 0.5rem;
+          margin-right: 0.25rem;
+          border-right: 2px solid var(--accent);
+          border-bottom: 2px solid var(--accent);
+          transform: rotate(45deg);
+          transition: transform 0.25s ease-in-out;
+        }
+      }
+      &.open .accordion-toggle::after {
+        transform: rotate(-135deg);
+      }
+      .panel-wrap {
+        display: grid;
+        grid-template-rows: 0fr;
+        visibility: hidden;
+      }
+      &.open .panel-wrap {
+        grid-template-rows: 1fr;
+        visibility: visible;
+      }
+      .panel {
+        overflow: hidden;
+        min-height: 0;
+        padding: 0 0.25rem;
+        opacity: 0;
+        translate: 0 -0.75rem;
+        &::after {
+          content: '';
+          display: block;
+          height: 0.75rem;
+        }
+        details summary {
+          cursor: pointer;
+          font-weight: bold;
+          width: fit-content;
+          &:hover {
+            color: var(--accent);
+          }
+        }
+      }
+      &.open .panel {
+        opacity: 1;
+        translate: 0 0;
+      }
+      @media (prefers-reduced-motion: no-preference) {
+        .panel-wrap {
+          transition: grid-template-rows 0.25s ease-in-out, visibility 0.25s;
+        }
+        .panel {
+          transition: opacity 0.2s ease-in-out, translate 0.25s ease-in-out;
+        }
+      }
     }
     h4 {
       margin: 0.5rem 0;
@@ -234,13 +363,6 @@
         text-align: center;
         display: inline-block;
       }
-    }
-    hr {
-      opacity: 0.5;
-      margin: 1.5rem auto;
-      height: 2px;
-      border: none;
-      background: var(--accent);
     }
     pre {
       background: var(--card-2);
@@ -272,20 +394,11 @@
     a {
       color: var(--accent);
     }
-    details {
-      summary {
-        cursor: pointer;
-        font-weight: bold;
-        &:hover {
-          color: var(--accent);
-        }
-      }
-    }
     .demo {
       display: block;
       margin: 0.5rem auto;
       border-radius: 6px;
-      max-width: 50rem;
+      max-width: min(100%, 50rem);
     }
     .code-block {
       background: var(--card-2);

@@ -139,11 +139,19 @@ export interface ChangelogEntry {
   notes: string | null;
 }
 
+export interface DockerVersion {
+  name: string;
+  size: number;
+  date: string;
+  platforms: string[];
+  release?: { title: string | null; notes: string | null; url: string };
+}
+
 export interface DockerMeta {
   architectures: string[];
   size: number | null; // compressed bytes
   latestVersion: string | null;
-  versions: { name: string; size: number; date: string }[];
+  versions: DockerVersion[];
 }
 
 export interface ProjectStats {

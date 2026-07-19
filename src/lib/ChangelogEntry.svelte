@@ -87,7 +87,7 @@
     }
   }
   .entry:not(.release) .version {
-    font-size: 1.1rem;
+    font-size: 1rem;
   }
   .notes {
     margin-top: 0.75rem;
