@@ -38,8 +38,9 @@ export const timeAgo = (dateTime: string): string => {
 
   for (let i = 0; i < msPer.length; i++) {
     if (elapsed < msPer[i]) {
-      const value = Math.floor(elapsed / (i > 0 ? msPer[i - 1] : 1));
-      return value === 0 ? 'just now' : `${value} ${units[i - 1] || 'minute'}${value > 1 ? 's' : ''} ago`;
+      if (i === 0) return 'just now';
+      const value = Math.floor(elapsed / msPer[i - 1]);
+      return `${value} ${units[i - 1]}${value > 1 ? 's' : ''} ago`;
     }
   }
   return `${Math.floor(elapsed / msPer[4])} years ago`;

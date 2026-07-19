@@ -57,6 +57,9 @@
     --gradient: linear-gradient(to right,#0B9AEC 0%,#6EDFDE 100%);
     --max-width: 1800px;
     margin: 0;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
     font-family: 'Kanit', sans-serif;
     color: var(--foreground);
     background: var(--background);
@@ -67,6 +70,7 @@
   }
   main {
     padding: 2rem;
+    flex: 1;
   }
 
 </style>

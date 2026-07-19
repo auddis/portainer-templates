@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { goto } from '$app/navigation';
+
   let {
     searchTerm = $bindable(''),
     isCategoriesVisible,
@@ -8,6 +10,12 @@
     isCategoriesVisible: boolean;
     toggleCategories: () => void;
   } = $props();
+
+  const onEnter = (e: KeyboardEvent) => {
+    if (e.key !== 'Enter') return;
+    const term = searchTerm.trim();
+    goto(term ? `/search?q=${encodeURIComponent(term)}` : '/search');
+  };
 </script>
 
 <div class="title-row">
@@ -16,7 +24,18 @@
     <button onclick={toggleCategories}>
       {isCategoriesVisible ? '▲' : '▼'} Categories
     </button>
-    <input type="text" placeholder="Search..." aria-label="Search templates" bind:value={searchTerm} />
+    <span class="search">
+      <input
+        type="text"
+        placeholder="Search..."
+        aria-label="Search templates"
+        aria-describedby="search-hint"
+        enterkeyhint="search"
+        bind:value={searchTerm}
+        onkeydown={onEnter}
+      />
+      <small id="search-hint">Press Enter for advanced search</small>
+    </span>
   </div>
 </div>
 
@@ -25,7 +44,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin: 1rem auto;
+  margin: 1rem auto 0.5rem auto;
   padding: 0 1rem;
   max-width: var(--max-width);
   flex-wrap: wrap;
@@ -43,6 +62,16 @@
       transition:all 0.3s ease-in-out;
       &:focus, &:hover {
         box-shadow: var(--shadow);
+      }
+    }
+    .search {
+      display: inline-flex;
+      text-align: center;
+      flex-direction: column;
+      small {
+        font-size: 0.7rem;
+        opacity: 0.6;
+        white-space: nowrap;
       }
     }
   }

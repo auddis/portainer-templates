@@ -27,7 +27,7 @@ function toRepo(owner: string, repo: string): string | null {
 // Repos a template might map to, strongest signal first. Each is checked against the
 // GitHub API in turn, so a wrong guess costs one 404 and falls through to the next.
 // Aggregators (linuxserver on lscr.io etc) yield no candidate, so they never match.
-function candidateRepos({ description, note, image }: Pick<Template, 'description' | 'note' | 'image'>): string[] {
+export function candidateRepos({ description, note, image }: Pick<Template, 'description' | 'note' | 'image'>): string[] {
   const text = `${description ?? ''} ${note ?? ''}`;
   const gh = text.match(GITHUB_LINK);
   const pages = text.match(PAGES_LINK);

@@ -165,3 +165,29 @@ export interface SimilarApp {
   logo?: string;
   category?: string;
 }
+
+export interface SearchEntry {
+  slug: string;
+  title: string;
+  description: string;
+  type: 1 | 2 | 3 | 4;
+  logo?: string;
+  categories?: string[];
+  platform?: string;
+  image?: string;
+  pulls?: number;
+  dockerStars?: number;
+  size?: number;
+  architectures?: string[];
+  imageCreated?: string;
+  imageUpdated?: string;
+  ghRepo?: string;
+  ghStars?: number;
+  language?: string;
+  ghUpdated?: string;
+}
+
+export interface SearchIndex {
+  generated: string;
+  entries: SearchEntry[];
+}

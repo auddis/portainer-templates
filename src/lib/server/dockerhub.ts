@@ -4,7 +4,7 @@ import type { DockerHubResponse, DockerMeta } from '$src/Types';
 
 const DAY = 86_400_000;
 
-interface DhTag {
+export interface DhTag {
   name: string;
   full_size: number;
   tag_last_pushed: string;
@@ -13,8 +13,12 @@ interface DhTag {
 
 // Docker Hub images are "repo" or "namespace/repo". Anything with a registry host
 // (ghcr.io/..., lscr.io/...) or an extra path segment isn't on Docker Hub, so skip it.
-function parseImage(image: string): { ns: string; repo: string } | null {
-  const name = image.split('@')[0].split(':')[0];
+// docker.io style prefixes are just hub aliases though, so strip those first.
+export function parseImage(image: string): { ns: string; repo: string } | null {
+  const name = image
+    .split('@')[0]
+    .split(':')[0]
+    .replace(/^(docker\.io|index\.docker\.io|registry\.hub\.docker\.com)\//, '');
   const parts = name.split('/');
   if (parts.length > 2 || parts[0].includes('.')) return null;
   const [ns, repo] = parts.length === 2 ? parts : ['library', parts[0]];
@@ -45,7 +49,7 @@ function isVersion(tag: string): boolean {
 
 const ARCH_ORDER = ['amd64', 'arm64', 'arm/v7', 'arm/v6', '386', 'ppc64le', 's390x', 'riscv64'];
 
-function summarise(results: DhTag[]): DockerMeta {
+export function summarise(results: DhTag[]): DockerMeta {
   const archSet = new Set<string>();
   for (const tag of results) {
     for (const img of tag.images || []) {

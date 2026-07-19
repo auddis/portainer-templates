@@ -23,6 +23,11 @@ export async function GET() {
     <priority>1</priority>
   </url>
   <url>
+    <loc>${baseUrl}/search</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>${baseUrl}/usage</loc>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>

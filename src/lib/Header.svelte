@@ -6,6 +6,7 @@
 
   const links = [
     { to: '/', icon: 'whale', label: 'All Templates' },
+    { to: '/search', icon: 'search', label: 'Search' },
     { to: '/usage', icon: 'install-instructions', label: 'Install' },
     { to: '/changelog', icon: 'changelog', label: 'Changelog' },
     { to: gitHubRepo, icon: 'github', label: 'GitHub' },
