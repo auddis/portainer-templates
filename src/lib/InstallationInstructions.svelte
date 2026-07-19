@@ -1,21 +1,31 @@
 <script lang="ts">
   import Highlight from "svelte-highlight";
   import yamlHighlight from "svelte-highlight/languages/yaml";
+  import bashHighlight from "svelte-highlight/languages/bash";
+  import iniHighlight from "svelte-highlight/languages/ini";
   import codeHighlighting from "svelte-highlight/styles/dracula";
   import { dockerRunHighlight } from "$lib/docker-run-lang";
+  import type { LanguageFn } from "highlight.js";
 
   import {
+      appSlug,
       generateDockerRunCommand,
       generateDockerRunCommands,
       convertToDockerCompose,
       convertPortainerStackToDockerCompose,
+      convertToSwarmStack,
+      convertToKubernetes,
+      convertToQuadlet,
     } from '$src/utils/template-to-docker-parser';
   import { templatesUrl, gitHubRepo } from '$src/constants';
   import type { Template, Service } from '$src/Types';
 
-  let { portainerTemplate = null, portainerServices = null, heading = 'h2' }: {
+  type CodeLanguage = { name: string; register: LanguageFn };
+
+  let { portainerTemplate = null, portainerServices = null, stackfile = null, heading = 'h2' }: {
     portainerTemplate?: Template | null;
     portainerServices?: Service[] | null;
+    stackfile?: string | null;
     heading?: 'h1' | 'h2';
   } = $props();
 
@@ -23,14 +33,42 @@
     navigator.clipboard.writeText(content);
   };
 
+  const slug = $derived(portainerTemplate ? appSlug(portainerTemplate) : 'app');
+  const repo = $derived(portainerTemplate?.repository ?? null);
+  const repoDir = $derived(repo?.url.replace(/\.git$/, '').split('/').filter(Boolean).pop() ?? '');
+
   const dockerRunCommand = $derived(portainerTemplate?.image ?
     generateDockerRunCommand(portainerTemplate) : null);
   const dockerRunCommands = $derived(portainerServices && !dockerRunCommand ?
     generateDockerRunCommands(portainerServices) : null);
-  const dockerComposeFile = $derived(portainerTemplate?.image ?
+
+  // types 3 and 4 are compose stacks, so their stackfile is the real compose file
+  const actualComposeFile = $derived(stackfile && repo && [3, 4].includes(portainerTemplate?.type ?? 0) ?
+    stackfile : null);
+  const generatedComposeFile = $derived(portainerTemplate?.image ?
     convertToDockerCompose(portainerTemplate) :
     (portainerServices ? convertPortainerStackToDockerCompose(portainerServices) : null));
+  const composeCloneCommand = $derived(repo ?
+    `git clone ${repo.url}\ncd ${repoDir}\ndocker compose -f ${repo.stackfile} up -d` : '');
+
+  // type 2 is a swarm stack, deployed straight from its own stackfile
+  const swarmStackfile = $derived(stackfile && repo && portainerTemplate?.type === 2 ? stackfile : null);
+  const swarmCloneCommand = $derived(repo ?
+    `git clone ${repo.url}\ncd ${repoDir}\ndocker stack deploy -c ${repo.stackfile} ${slug}` : '');
+  const generatedSwarmStack = $derived(portainerTemplate && portainerTemplate.type !== 2 ?
+    convertToSwarmStack(portainerTemplate) : null);
+
+  const kubernetesManifests = $derived(portainerTemplate ? convertToKubernetes(portainerTemplate) : null);
+  const quadletUnit = $derived(portainerTemplate ? convertToQuadlet(portainerTemplate) : null);
+  const quadletStartCommand = $derived(`systemctl --user daemon-reload\nsystemctl --user start ${slug}`);
 </script>
+
+{#snippet codeBlock(code: string, language: CodeLanguage)}
+  <div class="code-block">
+    <button class="code-copy" onclick={() => copyToClipboard(code)}>Copy</button>
+    <Highlight {language} {code} />
+  </div>
+{/snippet}
 
 
 <svelte:head>
@@ -64,37 +102,86 @@
 
   {#if dockerRunCommand}
     <hr />
-    <h3>Via Docker Run</h3>
-    <div class="docker-run-command">
-      <button class="docker-command-copy" onclick={() => copyToClipboard(dockerRunCommand)}>Copy</button>
-      <Highlight language={dockerRunHighlight} code={dockerRunCommand} />
-    </div>
+    <h3>Docker Run</h3>
+    {@render codeBlock(dockerRunCommand, dockerRunHighlight)}
   {/if}
 
   {#if dockerRunCommands && dockerRunCommands.length > 0}
     <hr />
-    <h3>Via Docker Run</h3>
+    <h3>Docker Run</h3>
     {#each dockerRunCommands as command, index}
       <h4>Service #{index + 1} - {portainerServices?.[index]?.name}</h4>
-      <div class="docker-run-command">
-        <button class="docker-command-copy" onclick={() => copyToClipboard(command)}>Copy</button>
-        <Highlight language={dockerRunHighlight} code={command} />
-      </div>
+      {@render codeBlock(command, dockerRunHighlight)}
     {/each}
   {/if}
 
-  {#if dockerComposeFile}
+  {#if actualComposeFile}
     <hr />
-    <h3>Via Docker Compose</h3>
+    <h3>Docker Compose</h3>
     <p class="instructions">
-      Save this file as <code>docker-compose.yml</code> and run <code>docker-compose up -d</code>
+      If the stack expects env vars, set them or add them to a <code>.env</code> file first.
+    </p>
+    {@render codeBlock(actualComposeFile, yamlHighlight)}
+    <p class="instructions">
+      Or, use the original compose file, strait from the template repo. Deploy with:
+    </p>
+    {@render codeBlock(composeCloneCommand, bashHighlight)}
+  {:else if generatedComposeFile}
+    <hr />
+    <h3>Docker Compose</h3>
+    <p class="instructions">
+      Save this file as <code>compose.yaml</code> and run <code>docker compose up -d</code>
       <br>
       Use this only as a guide.
     </p>
-    <div class="docker-compose-file">
-      <button class="docker-command-copy" onclick={() => copyToClipboard(dockerComposeFile)}>Copy</button>
-      <Highlight language={yamlHighlight} code={dockerComposeFile} />
-    </div>
+    {@render codeBlock(generatedComposeFile, yamlHighlight)}
+  {/if}
+
+  {#if swarmStackfile}
+    <hr />
+    <h3>Docker Swarm</h3>
+    <p class="instructions">
+      This template is a swarm stack, using the compose file below. From a manager node, run:
+    </p>
+    {@render codeBlock(swarmCloneCommand, bashHighlight)}
+    {@render codeBlock(swarmStackfile, yamlHighlight)}
+  {:else if generatedSwarmStack}
+    <hr />
+    <h3>Docker Swarm</h3>
+    <p class="instructions">
+      Save this file as <code>{slug}-stack.yml</code>, then from a manager node, run
+      <code>docker stack deploy -c {slug}-stack.yml {slug}</code>
+    </p>
+    {@render codeBlock(generatedSwarmStack, yamlHighlight)}
+  {/if}
+
+  {#if kubernetesManifests?.length}
+    <hr />
+    <h3>Kubernetes</h3>
+    <p class="instructions">
+      Save each file below into a folder, then run <code>kubectl apply -f .</code>
+      <br>
+      Written for k3s, but works on any cluster: bind mounts use hostPath, named volumes get a
+      persistent volume claim, and ports are exposed via a LoadBalancer service.
+    </p>
+    {#each kubernetesManifests as manifest (manifest.file)}
+      <h4><code>{manifest.file}</code></h4>
+      {@render codeBlock(manifest.content, yamlHighlight)}
+    {/each}
+  {/if}
+
+  {#if quadletUnit}
+    <hr />
+    <h3>Podman Quadlet</h3>
+    <p class="instructions">
+      Save this file as <code>~/.config/containers/systemd/{slug}.container</code>
+    </p>
+    {@render codeBlock(quadletUnit, iniHighlight)}
+    <p class="instructions">Then reload systemd and start the service:</p>
+    {@render codeBlock(quadletStartCommand, bashHighlight)}
+    <p class="instructions">
+      For a system-wide service, use <code>/etc/containers/systemd/</code> and drop <code>--user</code>.
+    </p>
   {/if}
 
   <hr />
@@ -121,6 +208,12 @@
     }
     h4 {
       margin: 0.5rem 0;
+      code {
+        background: var(--card-2);
+        border-radius: 6px;
+        padding: 0 0.25rem;
+        font-weight: 400;
+      }
     }
     p {
       margin: 0;
@@ -194,11 +287,12 @@
       border-radius: 6px;
       max-width: 50rem;
     }
-    .docker-run-command, .docker-compose-file {
+    .code-block {
       background: var(--card-2);
       position: relative;
       padding: 0.5rem;
-      .docker-command-copy {
+      margin: 0.5rem 0;
+      .code-copy {
         position: absolute;
         right: 0.5rem;
         top: 0.5rem;

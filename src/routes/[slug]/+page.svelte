@@ -26,6 +26,7 @@
   const services = $derived((page.data.services ?? []) as Service[]);
   const similar = $derived((page.data.similar ?? []) as SimilarApp[]);
   const readme = $derived((page.data.readme ?? null) as string | null);
+  const stackfile = $derived((page.data.stackfile ?? null) as string | null);
 
   const makeMultiDoc = (svcs: Service[]) =>
     svcs
@@ -59,7 +60,7 @@
   });
 
   const makeMetaDescription = (t: Template) =>
-    `Installation guide for ${t.title}, using Portainer, Docker Run or Docker-Compose. `
+    `Installation guide for ${t.title}, using Portainer, Docker, Docker Compose, Kubernetes or Podman. `
     + `Portainer-Templates is a community driven repository of Portainer Templates for Self-Hosted apps. \n`
     + `${t.description}`;
 
@@ -148,7 +149,7 @@
     </section>
   {/if}
 
-  <InstallationInstructions portainerTemplate={template} portainerServices={services.length ? services : null} />
+  <InstallationInstructions portainerTemplate={template} portainerServices={services.length ? services : null} {stackfile} />
 
   {#if dockerStats?.full_description}
     <MdContent content={dockerStats.full_description} />

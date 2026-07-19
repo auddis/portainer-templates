@@ -53,34 +53,34 @@ type ComposeServiceRaw = {
   environment?: Record<string, unknown> | string[];
 };
 
-const getServices = async (template: Template, fetch: Fetch): Promise<Service[]> => {
+/* Fetch and parse the template's stackfile, keeping the raw text too */
+const getServices = async (template: Template, fetch: Fetch): Promise<{ services: Service[]; stackfile: string | null }> => {
   try {
-    if (template?.repository) {
-      const { url: repoUrl, stackfile } = template.repository;
-      const path = `${repoUrl.replace('github.com', 'raw.githubusercontent.com')}/HEAD/${stackfile}`;
-      const response = await fetch(path);
-      const data = await response.text();
-      const parsedData = yaml.load(data) as { services?: Record<string, ComposeServiceRaw> } | null;
-      if (!parsedData?.services) return [];
+    if (!template?.repository) return { services: [], stackfile: null };
+    const { url: repoUrl, stackfile } = template.repository;
+    const path = `${repoUrl.replace('github.com', 'raw.githubusercontent.com')}/HEAD/${stackfile}`;
+    const response = await fetch(path);
+    if (!response.ok) return { services: [], stackfile: null };
+    const data = await response.text();
+    const parsedData = yaml.load(data) as { services?: Record<string, ComposeServiceRaw> } | null;
+    if (!parsedData?.services) return { services: [], stackfile: null };
 
-      return Object.entries(parsedData.services).map(([name, serviceData]) => ({
-        name,
-        image: serviceData.image,
-        entrypoint: serviceData.entrypoint,
-        command: serviceData.command,
-        ports: serviceData.ports,
-        build: serviceData.build,
-        interactive: serviceData.interactive,
-        volumes: parseVolumes(serviceData.volumes),
-        restart_policy: serviceData.restart,
-        env: parseEnv(serviceData.environment),
-      }));
-    } else {
-      return [];
-    }
+    const services = Object.entries(parsedData.services).map(([name, serviceData]) => ({
+      name,
+      image: serviceData.image,
+      entrypoint: serviceData.entrypoint,
+      command: serviceData.command,
+      ports: serviceData.ports,
+      build: serviceData.build,
+      interactive: serviceData.interactive,
+      volumes: parseVolumes(serviceData.volumes),
+      restart_policy: serviceData.restart,
+      env: parseEnv(serviceData.environment),
+    }));
+    return { services, stackfile: data };
   } catch (error) {
     console.error('Error fetching or parsing YAML:', error);
-    return [];
+    return { services: [], stackfile: null };
   }
 };
 
@@ -107,7 +107,7 @@ const returnResults = async (allTemplates: Template[], templateSlug: string, fet
   if (!template) throw error(404, `No template named "${templateSlug}"`);
 
   // Fetch service info from associated stackfile, if it exists
-  let services = template.repository ? await getServices(template, fetch) : [];
+  let { services, stackfile } = await getServices(template, fetch);
 
   // If only 1 service, merge it with the template
   if (services.length === 1) {
@@ -140,6 +140,7 @@ const returnResults = async (allTemplates: Template[], templateSlug: string, fet
     project,
     readme,
     services,
+    stackfile,
     similar: findSimilar(allTemplates, template),
   };
 };

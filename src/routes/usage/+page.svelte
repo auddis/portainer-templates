@@ -5,7 +5,7 @@
 
 <Meta
   title="Installation | Portainer Templates"
-  description="How to add the Portainer Templates repository to your Portainer instance, then deploy any of 400+ self-hosted apps in 1-click, or install them directly with Docker Run or Docker-Compose"
+  description="How to add the Portainer Templates repository to your Portainer instance, then deploy any of 400+ self-hosted apps in 1-click, or install them directly with Docker, Docker Compose, Kubernetes or Podman"
   path="/usage"
 />
 
