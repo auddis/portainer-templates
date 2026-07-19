@@ -1,7 +1,7 @@
 import yaml from 'js-yaml';
 import type { Template, Service, Volume, Environment, Label, DockerCompose, DockerComposeService, TemplateOrService } from '$src/Types';
 
-const envValue = (env: Environment): string =>
+export const envValue = (env: Environment): string =>
   env.value ?? env.default ?? env.select?.find((option) => option.default)?.value ?? '';
 
 const volumeBinding = (volume: Volume): string => {

@@ -156,7 +156,9 @@
   {/if}
 
   <Versions versions={dockerMeta?.versions ?? []} />
-  <Troubleshooting appRepo={project?.url} templateSource={template.maintainer} />
+  <svelte:boundary onerror={(e) => console.error('Troubleshooting section failed:', e)}>
+    <Troubleshooting {template} {dockerMeta} {project} {services} />
+  </svelte:boundary>
   <SimilarApps items={similar} />
 
 {/if}
