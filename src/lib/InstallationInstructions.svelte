@@ -23,12 +23,13 @@
 
   type CodeLanguage = { name: string; register: LanguageFn };
 
-  let { portainerTemplate = null, portainerServices = null, stackfile = null, project = null, heading = 'h2' }: {
+  let { portainerTemplate = null, portainerServices = null, stackfile = null, project = null, heading = 'h2', portainerOnly = false }: {
     portainerTemplate?: Template | null;
     portainerServices?: Service[] | null;
     stackfile?: string | null;
     project?: ProjectStats | null;
     heading?: 'h1' | 'h2';
+    portainerOnly?: boolean;
   } = $props();
 
   const copyToClipboard = (content: string) => {
@@ -125,7 +126,7 @@
   {#if dockerRunCommand}
     {@render codeBlock(dockerRunCommand, dockerRunHighlight)}
   {:else if dockerRunCommands}
-    {#each dockerRunCommands as command, index}
+    {#each dockerRunCommands as command, index (command)}
       <h4>Service #{index + 1} - {portainerServices?.[index]?.name}</h4>
       {@render codeBlock(command, dockerRunHighlight)}
     {/each}
@@ -210,31 +211,36 @@
 </svelte:head>
 
 <section>
-  <svelte:element this={heading} class="title">Installation</svelte:element>
+  <svelte:element this={heading} class="title">{portainerOnly ? 'Install on Portainer' : 'Installation'}</svelte:element>
 
-  {@render accordionItem('Via Portainer', portainerBody)}
+  {#if portainerOnly}
+    <p class="intro">Import all app templates into your Portainer instance, for easy 1-click deploys</p>
+    {@render portainerBody()}
+  {:else}
+    {@render accordionItem('Via Portainer', portainerBody)}
 
-  {#if dockerRunCommand || dockerRunCommands?.length}
-    {@render accordionItem('Docker Run', dockerRunBody)}
+    {#if dockerRunCommand || dockerRunCommands?.length}
+      {@render accordionItem('Docker Run', dockerRunBody)}
+    {/if}
+
+    {#if actualComposeFile || generatedComposeFile}
+      {@render accordionItem('Docker Compose', composeBody)}
+    {/if}
+
+    {#if swarmStackfile || generatedSwarmStack}
+      {@render accordionItem('Docker Swarm', swarmBody)}
+    {/if}
+
+    {#if kubernetesManifests?.length}
+      {@render accordionItem('Kubernetes', kubernetesBody)}
+    {/if}
+
+    {#if quadletUnit}
+      {@render accordionItem('Podman Quadlet', quadletBody)}
+    {/if}
+
+    {@render accordionItem('Alternative Methods', alternativeBody)}
   {/if}
-
-  {#if actualComposeFile || generatedComposeFile}
-    {@render accordionItem('Docker Compose', composeBody)}
-  {/if}
-
-  {#if swarmStackfile || generatedSwarmStack}
-    {@render accordionItem('Docker Swarm', swarmBody)}
-  {/if}
-
-  {#if kubernetesManifests?.length}
-    {@render accordionItem('Kubernetes', kubernetesBody)}
-  {/if}
-
-  {#if quadletUnit}
-    {@render accordionItem('Podman Quadlet', quadletBody)}
-  {/if}
-
-  {@render accordionItem('Alternative Methods', alternativeBody)}
 </section>
 
 <style lang="scss">
@@ -248,6 +254,12 @@
     .title {
       margin: 0 0 0.5rem;
       font-size: 2rem;
+    }
+    .intro {
+      margin: 0;
+      font-size: 1.1rem;
+      opacity: 0.5;
+      font-style: italic;
     }
     .accordion {
       border-bottom: 2px solid var(--card-2);
@@ -319,14 +331,6 @@
           content: '';
           display: block;
           height: 0.75rem;
-        }
-        details summary {
-          cursor: pointer;
-          font-weight: bold;
-          width: fit-content;
-          &:hover {
-            color: var(--accent);
-          }
         }
       }
       &.open .panel {
@@ -406,6 +410,14 @@
       margin: 0.5rem auto;
       border-radius: 6px;
       max-width: min(100%, 50rem);
+    }
+    details summary {
+      cursor: pointer;
+      font-weight: bold;
+      width: fit-content;
+      &:hover {
+        color: var(--accent);
+      }
     }
     .code-block {
       background: var(--card-2);

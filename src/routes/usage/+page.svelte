@@ -9,4 +9,4 @@
   path="/usage"
 />
 
-<InstallationInstructions heading="h1" />
+<InstallationInstructions heading="h1" portainerOnly />
