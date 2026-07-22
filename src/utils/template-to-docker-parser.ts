@@ -173,11 +173,6 @@ export const orderByDependencies = (stack: Service[]): Service[] => {
 
 export const generateDockerRunCommand = (template: TemplateOrService) => dockerRun(template);
 
-// a shared network stands in for compose's default one, so services can still talk
-export const generateDockerRunCommands = (stack: Service[], network?: string) =>
-  orderByDependencies(stack.filter((service) => service.image))
-    .map((service) => dockerRun(network && !service.network ? { ...service, network } : service));
-
 export const convertToDockerCompose = (template: Template) => {
   const service = composeService(template);
   // container_name mirrors docker run --name

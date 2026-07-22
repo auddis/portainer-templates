@@ -20,6 +20,17 @@ export async function loadTemplates(fetch: Fetch): Promise<Template[]> {
   }
 }
 
+/* Merge stackfile env values over the template's richer defs (labels, selects), keeping both */
+export const mergeEnv = (defs: Environment[] = [], values: Environment[] = []): Environment[] => {
+  if (!values.length) return defs;
+  const byName = new Map(defs.map((env) => [env.name, env]));
+  const seen = new Set(values.map((env) => env.name));
+  return [
+    ...values.map((env) => ({ ...byName.get(env.name), ...env })),
+    ...defs.filter((env) => !seen.has(env.name)),
+  ];
+};
+
 /* Compose environment can be a map ({ KEY: value }) or a list ([ "KEY=value" ]) */
 const parseEnv = (environment?: Record<string, unknown> | string[]): Environment[] => {
   if (!environment) return [];

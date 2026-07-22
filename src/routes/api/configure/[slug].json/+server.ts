@@ -1,21 +1,9 @@
 import { json, error } from '@sveltejs/kit';
-import { loadTemplates, getServices } from '$lib/server/templates';
+import { loadTemplates, getServices, mergeEnv } from '$lib/server/templates';
 import { getDockerHubStats, getDockerMeta } from '$lib/server/dockerhub';
 import { getProjectStats } from '$lib/server/github';
 import { slugify } from '$lib/format';
-import type { Environment } from '$src/Types';
 import type { RequestHandler } from './$types';
-
-// Stackfile values win, but keep the template's richer definitions (labels, selects etc)
-const mergeEnv = (defs: Environment[] = [], values: Environment[] = []): Environment[] => {
-  if (!values.length) return defs;
-  const byName = new Map(defs.map((env) => [env.name, env]));
-  const seen = new Set(values.map((env) => env.name));
-  return [
-    ...values.map((env) => ({ ...byName.get(env.name), ...env })),
-    ...defs.filter((env) => !seen.has(env.name)),
-  ];
-};
 
 export const GET: RequestHandler = async ({ params, fetch, setHeaders }) => {
   const list = await loadTemplates(fetch);

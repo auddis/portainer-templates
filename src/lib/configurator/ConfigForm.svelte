@@ -1,12 +1,12 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
-  import { patterns, secretEnv, emptyPort, emptyEnv, emptyVolume, emptyLabel, emptyDevice, type ServiceConfig } from './config';
+  import { patterns, secretEnv, emptyPort, emptyEnv, emptyVolume, emptyLabel, emptyDevice, ALL_FIELDS, type ServiceConfig, type MethodFields } from './config';
 
-  let { config = $bindable(), nameRequired = false, imageRequired = false, showRestart = true, traefikKind = 'labels', envFileKind = 'env', extras }: {
+  let { config = $bindable(), nameRequired = false, imageRequired = false, fields = ALL_FIELDS, traefikKind = 'labels', envFileKind = 'env', extras }: {
     config: ServiceConfig;
     nameRequired?: boolean;
     imageRequired?: boolean;
-    showRestart?: boolean;
+    fields?: MethodFields;
     traefikKind?: 'labels' | 'ingress';
     envFileKind?: 'env' | 'secret' | null;
     extras?: Snippet;
@@ -27,7 +27,7 @@
         <input type="text" bind:value={config.name} pattern={patterns.name} required={nameRequired}
           placeholder="my-app" title="What to call the container" spellcheck="false" autocomplete="off" />
       </label>
-      {#if showRestart}
+      {#if fields.restart}
         <label>
           <span>Restart policy</span>
           <select bind:value={config.restart} title="When the container should restart automatically">
@@ -190,15 +190,21 @@
           <input type="text" bind:value={config.memory} pattern={patterns.memory} placeholder="e.g. 512m"
             title="Max memory, like 512m or 2g" spellcheck="false" autocomplete="off" />
         </label>
-        <label class="check boxed" title="Full access to the host, only enable if the app needs it">
-          <input type="checkbox" bind:checked={config.privileged} /> Privileged mode
-        </label>
-        <label class="check boxed" title="Give the container access to NVIDIA GPUs">
-          <input type="checkbox" bind:checked={config.gpu} /> NVIDIA GPU
-        </label>
-        <label class="check boxed" title="Keep stdin open and allocate a TTY">
-          <input type="checkbox" bind:checked={config.interactive} /> Interactive TTY
-        </label>
+        {#if fields.privileged}
+          <label class="check boxed" title="Full access to the host, only enable if the app needs it">
+            <input type="checkbox" bind:checked={config.privileged} /> Privileged mode
+          </label>
+        {/if}
+        {#if fields.gpu}
+          <label class="check boxed" title="Give the container access to NVIDIA GPUs">
+            <input type="checkbox" bind:checked={config.gpu} /> NVIDIA GPU
+          </label>
+        {/if}
+        {#if fields.interactive}
+          <label class="check boxed" title="Keep stdin open and allocate a TTY">
+            <input type="checkbox" bind:checked={config.interactive} /> Interactive TTY
+          </label>
+        {/if}
       </div>
     </fieldset>
     <fieldset class="panel">
@@ -256,25 +262,27 @@
       {/if}
     </fieldset>
 
-    <fieldset class="panel">
-      <legend>Devices</legend>
-      <div class="rows">
-        {#each config.devices as dev, i (i)}
-          <div class="row devices">
-            <input type="text" bind:value={dev.host} pattern={patterns.devicePath} required={!!dev.container}
-              placeholder="/dev/dri" aria-label="Host device" title="Host device to share with the container"
-              spellcheck="false" autocomplete="off" />
-            <span class="sep" aria-hidden="true">:</span>
-            <input type="text" bind:value={dev.container} pattern={patterns.devicePath} placeholder="same as host"
-              aria-label="Container device path" title="Path the device appears at inside the container"
-              spellcheck="false" autocomplete="off" />
-            <button type="button" class="remove" onclick={() => config.devices.splice(i, 1)}
-              aria-label="Remove device {dev.host || i + 1}">&times;</button>
-          </div>
-        {/each}
-        <button type="button" class="add" onclick={() => config.devices.push(emptyDevice())}>+ Add device</button>
-      </div>
-    </fieldset>
+    {#if fields.devices}
+      <fieldset class="panel">
+        <legend>Devices</legend>
+        <div class="rows">
+          {#each config.devices as dev, i (i)}
+            <div class="row devices">
+              <input type="text" bind:value={dev.host} pattern={patterns.devicePath} required={!!dev.container}
+                placeholder="/dev/dri" aria-label="Host device" title="Host device to share with the container"
+                spellcheck="false" autocomplete="off" />
+              <span class="sep" aria-hidden="true">:</span>
+              <input type="text" bind:value={dev.container} pattern={patterns.devicePath} placeholder="same as host"
+                aria-label="Container device path" title="Path the device appears at inside the container"
+                spellcheck="false" autocomplete="off" />
+              <button type="button" class="remove" onclick={() => config.devices.splice(i, 1)}
+                aria-label="Remove device {dev.host || i + 1}">&times;</button>
+            </div>
+          {/each}
+          <button type="button" class="add" onclick={() => config.devices.push(emptyDevice())}>+ Add device</button>
+        </div>
+      </fieldset>
+    {/if}
     <fieldset class="panel">
       <legend>Labels</legend>
       <div class="rows">

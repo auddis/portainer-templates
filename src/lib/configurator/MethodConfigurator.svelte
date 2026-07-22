@@ -5,7 +5,7 @@
   import { dockerRunHighlight } from '$lib/docker-run-lang';
   import CodeBlock from '$lib/CodeBlock.svelte';
   import ConfigForm from './ConfigForm.svelte';
-  import { fromTemplate, toService, validate, patterns, traefikLabels, traefikHost, METHODS, availableMethods } from './config';
+  import { fromTemplate, toService, validate, patterns, traefikLabels, traefikHost, METHODS, availableMethods, methodFields, maskConfig, ALL_FIELDS } from './config';
   import type { ConfigData, MethodId, ServiceConfig } from './config';
   import {
     appSlug,
@@ -50,6 +50,10 @@
   const slug = $derived(appSlug(data.template));
   const withVersion = $derived(single && !!data.meta?.versions.length);
 
+  const fields = $derived(method ? methodFields(method) : ALL_FIELDS);
+  // form binds raw configs; generation reads the masked copy so hidden fields can't dead-end it
+  const active = $derived(configs.map((cfg) => maskConfig(cfg, fields)));
+
   const pinnedTag = $derived.by(() => {
     const tag = /:([^/:]+)$/.exec((data.template.image ?? '').split('@')[0])?.[1];
     return tag && tag !== 'latest' ? tag : null;
@@ -60,11 +64,11 @@
   });
 
   const formProblems = $derived(
-    configs.flatMap((cfg, i) => validate(cfg, single ? '' : `${cfg.name || `service ${i + 1}`}: `, !single)),
+    active.flatMap((cfg, i) => validate(cfg, single ? '' : `${cfg.name || `service ${i + 1}`}: `, !single)),
   );
   const extraProblems = $derived.by(() => {
     const errors: string[] = [];
-    configs.forEach((cfg, i) => {
+    active.forEach((cfg, i) => {
       const original = single ? data.template.image : data.services[i]?.image;
       if (original && !cfg.image.trim()) errors.push(single ? 'an image is required' : `${cfg.name || `service ${i + 1}`}: an image is required`);
     });
@@ -72,24 +76,24 @@
       if (namespace && !new RegExp(`^(${patterns.namespace})$`).test(namespace)) errors.push('namespace should be a lowercase name, like "media"');
       if (pvcSize && !new RegExp(`^(${patterns.quantity})$`).test(pvcSize)) errors.push('volume size should look like 1Gi or 500Mi');
       if (storageClass && !new RegExp(`^(${patterns.k8sName})$`).test(storageClass)) errors.push('storage class should be a lowercase name, like "local-path"');
-      if (configs[0]?.traefik.enabled && !configs[0].ports.some((p) => p.container)) errors.push('an ingress needs at least one port mapping');
-      if (configs[0]?.ports.some((p) => p.host.includes('-') || p.container.includes('-'))) errors.push("kubernetes services can't use port ranges, list each port on its own row");
-      const net = configs[0]?.network.trim();
+      if (active[0]?.traefik.enabled && !active[0].ports.some((p) => p.container)) errors.push('an ingress needs at least one port mapping');
+      if (active[0]?.ports.some((p) => p.host.includes('-') || p.container.includes('-'))) errors.push("kubernetes services can't use port ranges, list each port on its own row");
+      const net = active[0]?.network.trim();
       if (net && net !== 'host' && net !== 'bridge') errors.push("kubernetes pods can't join docker networks, clear the network field or use host");
-      const usr = configs[0]?.user.trim();
+      const usr = active[0]?.user.trim();
       if (usr && !/^\d+(:\d+)?$/.test(usr)) errors.push('kubernetes needs a numeric user, like 1000 or 1000:1000');
     }
     if (!single) {
-      const names = configs.map((cfg) => cfg.name.trim()).filter(Boolean);
+      const names = active.map((cfg) => cfg.name.trim()).filter(Boolean);
       const dupName = names.find((name, i) => names.indexOf(name) !== i);
       if (dupName) errors.push(`service names must be unique, "${dupName}" is used twice`);
     }
-    const hostPorts = configs.flatMap((cfg) => cfg.ports.filter((p) => p.host).map((p) => `${p.host}/${p.protocol}`));
+    const hostPorts = active.flatMap((cfg) => cfg.ports.filter((p) => p.host).map((p) => `${p.host}/${p.protocol}`));
     const dupPort = hostPorts.find((port, i) => hostPorts.indexOf(port) !== i);
     if (dupPort) errors.push(`host port ${dupPort.split('/')[0]} is mapped more than once`);
     // replicas can't share per-node storage, so block the footgun early
     if ((method === 'kubernetes' || (method === 'docker-swarm' && swarmMode === 'replicated')) && Number(replicas) > 1) {
-      const cfg = configs[0];
+      const cfg = active[0];
       if (cfg?.volumes.some((v) => v.container.trim()) || cfg?.devices.some((d) => d.host.trim()))
         errors.push("multiple replicas can't safely share this app's volumes, set replicas to 1 or remove the volumes");
     }
@@ -97,7 +101,7 @@
   });
   const problems = $derived([...extraProblems, ...formProblems]);
   // labels reach traefik directly for run/compose/quadlet; swarm and k8s have their own routes below
-  const builtServices = $derived(configs.map((cfg) => {
+  const builtServices = $derived(active.map((cfg) => {
     const svc = toService(cfg, withVersion ? version : null);
     // swarm can't read env files, everywhere else values move out of the main config
     if (cfg.envFile && svc.env?.length && method !== 'docker-swarm') {
@@ -143,7 +147,7 @@
         mode: swarmMode,
         placement: placement.trim(),
         portMode,
-        deployLabels: configs[0]?.traefik.enabled ? traefikLabels(configs[0], slug) : [],
+        deployLabels: active[0]?.traefik.enabled ? traefikLabels(active[0], slug) : [],
       });
       return code ? [{ code, language: yamlHighlight }] : [];
     }
@@ -154,12 +158,12 @@
         serviceType,
         pvcSize: pvcSize.trim(),
         storageClass: storageClass.trim(),
-        ...(configs[0]?.traefik.enabled && {
+        ...(active[0]?.traefik.enabled && {
           ingress: {
-            host: traefikHost(configs[0], slug),
-            port: Number(configs[0].traefik.port) || undefined,
-            tls: configs[0].traefik.tls,
-            issuer: configs[0].traefik.certResolver.trim(),
+            host: traefikHost(active[0], slug),
+            port: Number(active[0].traefik.port) || undefined,
+            tls: active[0].traefik.tls,
+            issuer: active[0].traefik.certResolver.trim(),
           },
         }),
       };
@@ -202,6 +206,9 @@
 {#if available.length}
   <fieldset class="methods">
     <legend>Installation method</legend>
+    {#if method}
+      <button type="button" class="reset" onclick={() => (method = null)}>Reset</button>
+    {/if}
     <div class="pills">
       {#each METHODS.filter((m) => available.includes(m.id)) as m (m.id)}
         <label class="pill" class:checked={method === m.id}>
@@ -303,7 +310,7 @@
         {#if !single}<h3>{config.name || `Service ${i + 1}`}</h3>{/if}
         <ConfigForm bind:config={configs[i]} nameRequired={!single}
           imageRequired={single ? !!data.template.image : !!data.services[i]?.image}
-          showRestart={method !== 'kubernetes'}
+          {fields}
           traefikKind={method === 'kubernetes' ? 'ingress' : 'labels'}
           envFileKind={method === 'docker-swarm' ? null : method === 'kubernetes' ? 'secret' : 'env'}
           extras={formExtras} />
@@ -325,10 +332,14 @@
         {#if block.file}<h4><code>{block.file}</code></h4>{/if}
         <CodeBlock code={block.code} language={block.language} />
       {/each}
+      <p class="disclaimer">
+        This is just a guide.
+        Should work as a starting point, but give it a read and adjust to taste, before deploying.
+      </p>
     {:else}
       <p class="status">
-        {METHODS.find((m) => m.id === method)?.label} isn't possible with the current options,
-        things like privileged mode, devices, a GPU, an interactive TTY or host networking rule it out.
+        {METHODS.find((m) => m.id === method)?.label} can't be built with these options - usually a host or custom
+        network mode. Try a different network, or another install method.
       </p>
     {/if}
   {/if}
@@ -340,12 +351,32 @@
     opacity: 0.8;
   }
   .methods {
+    position: relative;
     display: block;
     margin: 1rem 0 0;
     padding: 0.75rem;
     border: none;
     border-radius: 6px;
     background: var(--card-2);
+    .reset {
+      position: absolute;
+      top: 0.6rem;
+      right: 0.75rem;
+      padding: 0;
+      background: none;
+      border: none;
+      color: var(--accent);
+      font: inherit;
+      font-size: 0.75rem;
+      cursor: pointer;
+      &:hover {
+        text-decoration: underline;
+      }
+      &:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+    }
     legend {
       float: left;
       width: 100%;
@@ -461,7 +492,8 @@
   .problems {
     margin: 1rem 0 0;
     padding: 0.75rem 1rem 0.75rem 2rem;
-    background: var(--card-2);
+    background: #e5534b1f;
+    border-radius: 1px 6px 6px 1px;
     border-left: 3px solid #e5534b;
     border-radius: 6px;
     font-size: 0.9rem;
@@ -471,6 +503,13 @@
   }
   .caption {
     margin: 0.25rem 0 0.25rem;
+  }
+  .disclaimer {
+    margin: 0.75rem 0 0;
+    font-size: 0.85rem;
+    opacity: 0.5;
+    font-style: italic;
+    color: #e5534b;
   }
   h4 {
     margin: 0.75rem 0 0;

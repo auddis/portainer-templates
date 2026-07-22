@@ -1,5 +1,5 @@
 import { error } from '@sveltejs/kit';
-import { loadTemplates, getServices } from '$lib/server/templates';
+import { loadTemplates, getServices, mergeEnv } from '$lib/server/templates';
 import { getDockerHubStats, getDockerMeta } from '$lib/server/dockerhub';
 import { getProjectStats, getReadme, getReleases } from '$lib/server/github';
 import { slugify } from '$lib/format';
@@ -51,9 +51,9 @@ const returnResults = async (allTemplates: Template[], templateSlug: string, fet
   // Fetch service info from associated stackfile, if it exists
   let { services, stackfile } = await getServices(template, fetch);
 
-  // If only 1 service, merge it with the template
+  // If only 1 service, merge it with the template, keeping the template's richer env defs
   if (services.length === 1) {
-    template = { ...template, ...services[0] };
+    template = { ...template, ...services[0], env: mergeEnv(template.env, services[0].env) };
   } else if (services.length > 1) {
     // If made up from multiple services, fetch Docker info for each image
     services = await Promise.all(
@@ -67,7 +67,7 @@ const returnResults = async (allTemplates: Template[], templateSlug: string, fet
   // Everything below is independent, so fetch it all at once
   const [dockerStats, rawMeta, project] = await Promise.all([
     getDockerHubStats(template.image, fetch),
-    getDockerMeta(template.image, fetch),
+    getDockerMeta(template.image, fetch, 30),
     getProjectStats(template, fetch),
   ]);
   const dockerMeta = await withReleaseNotes(rawMeta, project, fetch);

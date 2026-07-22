@@ -34,6 +34,27 @@ export const METHODS: { id: MethodId; label: string; icon: string }[] = [
   { id: 'podman-quadlet', label: 'Podman Quadlet', icon: 'podman.png' },
 ];
 
+export type MethodFields = { restart: boolean; devices: boolean; privileged: boolean; gpu: boolean; interactive: boolean };
+export const ALL_FIELDS: MethodFields = { restart: true, devices: true, privileged: true, gpu: true, interactive: true };
+
+/* advanced fields a method's output can actually use; the rest are hidden to avoid dead-end configs */
+export const methodFields = (method: MethodId): MethodFields => ({
+  restart: method !== 'kubernetes',
+  devices: method !== 'docker-swarm',
+  privileged: method !== 'docker-swarm',
+  gpu: method !== 'docker-swarm',
+  interactive: method !== 'docker-swarm' && method !== 'podman-quadlet',
+});
+
+/* strip values the chosen method ignores, so a hidden field never blocks generation */
+export const maskConfig = (cfg: ServiceConfig, fields: MethodFields): ServiceConfig => ({
+  ...cfg,
+  ...(fields.devices ? {} : { devices: [] }),
+  ...(fields.privileged ? {} : { privileged: false }),
+  ...(fields.gpu ? {} : { gpu: false }),
+  ...(fields.interactive ? {} : { interactive: false }),
+});
+
 export const availableMethods = ({ template, services }: Pick<ConfigureResponse, 'template' | 'services'>): MethodId[] => {
   if (services.length > 1) {
     return services.some((s) => s.image) ? ['docker-run', 'docker-compose'] : ['docker-compose'];
@@ -115,6 +136,10 @@ const inRange = (port: string) => port.split('-').every((n) => +n >= 1 && +n <= 
 
 const POLICIES: RestartPolicy[] = ['always', 'unless-stopped', 'on-failure', 'no'];
 
+// some templates tack :ro onto the path instead of setting readonly, so lift it into the flag
+const stripRo = (path: string): [string, boolean] =>
+  path.endsWith(':ro') ? [path.slice(0, -3), true] : [path, false];
+
 const parsePort = (spec: string): PortRow => {
   const [address, protocol] = spec.split('/');
   const parts = address.split(':');
@@ -163,7 +188,11 @@ export const fromTemplate = (src: TemplateOrService): ServiceConfig => ({
     select: env.select,
     preset: env.preset,
   })),
-  volumes: (src.volumes ?? []).map((vol) => ({ bind: vol.bind ?? '', container: vol.container, readonly: !!vol.readonly })),
+  volumes: (src.volumes ?? []).map((vol) => {
+    const [container, roC] = stripRo(vol.container);
+    const [bind, roB] = stripRo(vol.bind ?? '');
+    return { bind, container, readonly: !!vol.readonly || roC || roB };
+  }),
   labels: (src.labels ?? []).map((label) => ({ name: label.name, value: label.value })),
   devices: (src.devices ?? []).map((spec) => {
     const [host, container] = spec.split(':');
