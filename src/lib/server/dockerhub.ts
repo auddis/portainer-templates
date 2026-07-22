@@ -60,7 +60,7 @@ const tagPlatforms = (tag: DhTag): string[] =>
       .map((img) => (img.variant ? `${img.architecture}/${img.variant}` : img.architecture)),
   ));
 
-export function summarise(results: DhTag[]): DockerMeta {
+export function summarise(results: DhTag[], limit = 5): DockerMeta {
   const archSet = new Set<string>();
   for (const tag of results) tagPlatforms(tag).forEach((arch) => archSet.add(arch));
   const architectures = sortArches(archSet);
@@ -68,7 +68,7 @@ export function summarise(results: DhTag[]): DockerMeta {
   const versions: DockerMeta['versions'] = [];
   const seen = new Set<string>();
   for (const tag of results) {
-    if (versions.length >= 5) break;
+    if (versions.length >= limit) break;
     if (!isVersion(tag.name) || seen.has(tag.name)) continue;
     seen.add(tag.name);
     versions.push({ name: tag.name, size: tag.full_size, date: tag.tag_last_pushed, platforms: tagPlatforms(tag) });
@@ -81,15 +81,16 @@ export function summarise(results: DhTag[]): DockerMeta {
 export function getDockerMeta(
   image: string | undefined,
   fetch: typeof globalThis.fetch,
+  limit = 5,
 ): Promise<DockerMeta | null> {
   const parsed = image ? parseImage(image) : null;
   if (!parsed) return Promise.resolve(null);
   const { ns, repo } = parsed;
-  return cached(`dh:meta:${ns}/${repo}`, DAY, async () => {
+  return cached(`dh:meta:${ns}/${repo}:${limit}`, DAY, async () => {
     const url = `https://hub.docker.com/v2/repositories/${ns}/${repo}/tags/?page_size=100&ordering=last_updated`;
     const data = await fetchJson<{ results: DhTag[] }>(url, { fetch });
     if (!data?.results?.length) return null;
-    const meta = summarise(data.results);
+    const meta = summarise(data.results, limit);
     // Nothing worth showing? Let the caller treat it as absent
     return meta.architectures.length || meta.size || meta.versions.length ? meta : null;
   });

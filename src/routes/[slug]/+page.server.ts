@@ -1,13 +1,9 @@
-import yaml from 'js-yaml';
-
 import { error } from '@sveltejs/kit';
-import { get } from 'svelte/store';
-import { templatesUrl } from '$src/constants';
-import { templates } from '$src/store';
+import { loadTemplates, getServices } from '$lib/server/templates';
 import { getDockerHubStats, getDockerMeta } from '$lib/server/dockerhub';
 import { getProjectStats, getReadme, getReleases } from '$lib/server/github';
 import { slugify } from '$lib/format';
-import type { Template, Service, Environment, Volume, SimilarApp, DockerMeta, ProjectStats } from '$src/Types';
+import type { Template, Service, SimilarApp, DockerMeta, ProjectStats } from '$src/Types';
 import type { PageServerLoad } from './$types';
 
 type Fetch = typeof globalThis.fetch;
@@ -15,73 +11,6 @@ type Fetch = typeof globalThis.fetch;
 /* Based on the current page name, find the corresponding template */
 const findTemplate = (allTemplates: Template[], slug: string) => {
   return allTemplates.find((temp) => slugify(temp.title) === slug);
-};
-
-/* Compose environment can be a map ({ KEY: value }) or a list ([ "KEY=value" ]) */
-const parseEnv = (environment?: Record<string, unknown> | string[]): Environment[] => {
-  if (!environment) return [];
-  if (Array.isArray(environment)) {
-    return environment.map((entry) => {
-      const [name, ...rest] = String(entry).split('=');
-      return { name, value: rest.join('=') };
-    });
-  }
-  return Object.entries(environment).map(([name, value]) => ({
-    name,
-    value: value == null ? '' : String(value),
-  }));
-};
-
-/* Compose volumes are strings ("source:target"); skip long-syntax objects we can't render inline */
-const parseVolumes = (volumes?: unknown[]): Volume[] =>
-  (volumes || [])
-    .filter((vol): vol is string => typeof vol === 'string')
-    .map((vol) => {
-      const [source, target] = vol.split(':');
-      return target ? { bind: source, container: target } : { container: source };
-    });
-
-type ComposeServiceRaw = {
-  image?: string;
-  entrypoint?: string;
-  command?: string;
-  ports?: string[];
-  build?: string;
-  interactive?: boolean;
-  volumes?: unknown[];
-  restart?: Service['restart_policy'];
-  environment?: Record<string, unknown> | string[];
-};
-
-/* Fetch and parse the template's stackfile, keeping the raw text too */
-const getServices = async (template: Template, fetch: Fetch): Promise<{ services: Service[]; stackfile: string | null }> => {
-  try {
-    if (!template?.repository) return { services: [], stackfile: null };
-    const { url: repoUrl, stackfile } = template.repository;
-    const path = `${repoUrl.replace('github.com', 'raw.githubusercontent.com')}/HEAD/${stackfile}`;
-    const response = await fetch(path);
-    if (!response.ok) return { services: [], stackfile: null };
-    const data = await response.text();
-    const parsedData = yaml.load(data) as { services?: Record<string, ComposeServiceRaw> } | null;
-    if (!parsedData?.services) return { services: [], stackfile: null };
-
-    const services = Object.entries(parsedData.services).map(([name, serviceData]) => ({
-      name,
-      image: serviceData.image,
-      entrypoint: serviceData.entrypoint,
-      command: serviceData.command,
-      ports: serviceData.ports,
-      build: serviceData.build,
-      interactive: serviceData.interactive,
-      volumes: parseVolumes(serviceData.volumes),
-      restart_policy: serviceData.restart,
-      env: parseEnv(serviceData.environment),
-    }));
-    return { services, stackfile: data };
-  } catch (error) {
-    console.error('Error fetching or parsing YAML:', error);
-    return { services: [], stackfile: null };
-  }
 };
 
 /* Match docker tags to github releases, so each version can show its release notes */
@@ -160,18 +89,8 @@ const returnResults = async (allTemplates: Template[], templateSlug: string, fet
 };
 
 export const load: PageServerLoad = async ({ params, fetch, setHeaders }) => {
-  const templateSlug = params.slug;
-  let list = get(templates);
-  if (!list || list.length === 0) {
-    try {
-      const data = await fetch(templatesUrl).then((res) => res.json());
-      list = data.templates;
-      templates.set(list);
-    } catch {
-      throw error(503, 'Could not load the templates list. Please try again shortly.');
-    }
-  }
+  const list = await loadTemplates(fetch);
   // Third-party stats change slowly, so let CDNs and browsers hang onto the page
   setHeaders({ 'cache-control': 'public, max-age=600, s-maxage=3600, stale-while-revalidate=86400' });
-  return returnResults(list, templateSlug, fetch);
+  return returnResults(list, params.slug, fetch);
 };

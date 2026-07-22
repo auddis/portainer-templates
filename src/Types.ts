@@ -60,6 +60,9 @@ export interface Label {
   value: string;
 }
 
+// compose short form (list of names) or long form (map with conditions)
+export type DependsOn = string[] | Record<string, { condition: string }>;
+
 export interface Service {
   name: string;
   image?: string;
@@ -71,6 +74,15 @@ export interface Service {
   build?: string;
   interactive?: boolean;
   env?: Environment[];
+  user?: string;
+  devices?: string[];
+  cpus?: string;
+  memory?: string;
+  network?: string;
+  gpu?: boolean;
+  env_file?: string;
+  depends_on?: DependsOn;
+  healthcheck?: Record<string, unknown>;
   dockerStats?: DockerHubResponse | null;
 }
 
@@ -104,10 +116,20 @@ export interface DockerHubResponse {
   content_types: string[]; // An array of supported content types for the repository
 }
 
+// long port syntax, used for swarm host-mode publishing
+export interface SwarmPort {
+  target: number;
+  published: number;
+  protocol?: string;
+  mode?: string;
+}
+
 export interface DockerComposeService {
   image?: string;
-  ports?: string[];
+  container_name?: string;
+  ports?: (string | SwarmPort)[];
   environment?: { [envVar: string]: string };
+  env_file?: string[];
   volumes?: string[];
   restart?: string;
   command?: string;
@@ -115,12 +137,27 @@ export interface DockerComposeService {
   build?: string | { context: string; dockerfile?: string };
   networks?: string[];
   network_mode?: string;
-  deploy?: { restart_policy: { condition: string } };
+  deploy?: {
+    mode?: string;
+    restart_policy?: { condition: string };
+    replicas?: number;
+    placement?: { constraints?: string[] };
+    resources?: {
+      limits?: { cpus?: string; memory?: string };
+      reservations?: { devices?: { driver: string; count: number | string; capabilities: string[] }[] };
+    };
+    labels?: { [labelName: string]: string };
+  };
   hostname?: string;
+  user?: string;
+  cpus?: string;
+  mem_limit?: string;
+  devices?: string[];
   privileged?: boolean;
   stdin_open?: boolean;
   tty?: boolean;
-  depends_on?: string[];
+  depends_on?: DependsOn;
+  healthcheck?: Record<string, unknown>;
   labels?: { [labelName: string]: string };
 }
 
