@@ -66,7 +66,7 @@
 </script>
 
 <section class="configurator">
-  <h2>Config Generator</h2>
+  <h2>Install without Portainer</h2>
   <p class="intro">
     Install a single app, without needing Portainer. Select an app, select an install method, and fill in the fields to get a complete run/config command.
   </p>

@@ -1,13 +1,14 @@
 <script lang="ts">
   import type { Template } from '$src/Types';
   import Logo from '$lib/Logo.svelte';
-  import { slugify } from '$lib/format';
+  import { slugify, parseDescription } from '$lib/format';
 
   let { templates }: { templates: Template[] } = $props();
 </script>
 
 <section class="templates">
   {#each templates as template (template.title)}
+    {@const descHtml = parseDescription(template.description)}
     <a class="template-card" href="/{slugify(template.title)}">
       <h3>{template.title}</h3>
       <div class="template-summary">
@@ -15,7 +16,7 @@
           <Logo src={template.logo} name={template.title} />
         </div>
         <div class="txt">
-          <p class="description" title={template.description}>{template.description}</p>
+          <p class="description" title={template.description}>{#if descHtml}{@html descHtml}{:else}{template.description}{/if}</p>
         </div>
       </div>
     </a>

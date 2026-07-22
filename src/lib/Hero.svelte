@@ -1,12 +1,12 @@
 <script>
     import Icon from '$lib/Icon.svelte';
-    import { gitHubRepo } from '$src/constants'; 
+    import { gitHubRepo } from '$src/constants';
 </script>
 
 <div class="hero">
   <header>
     <h1>Portainer Templates</h1>
-    <p class="sub-title">The largest single collection, of ready-to-go Portainer templates</p>
+    <p class="sub-title">The largest single collection, of ready-to-go Docker apps</p>
   </header>
 
   <section class="cta">

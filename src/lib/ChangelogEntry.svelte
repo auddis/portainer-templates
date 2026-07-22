@@ -58,7 +58,9 @@
           <h4>
             <Icon name={group.icon} width="14px" height="14px" />
             {group.label}
-            <span class="count">{group.items.length}</span>
+            {#if group.items.length > 1}
+              <span class="count">{group.items.length}</span>
+            {/if}
           </h4>
           <ul>
             {#each group.items as item (item.name)}

@@ -61,28 +61,64 @@
       : url.hostname.replace(/^www\./, '');
   });
 
+  // Front-load the install intent so it survives Google's ~155 char cut, then let the app's own blurb through
   const makeMetaDescription = (t: Template) =>
-    `Installation guide for ${t.title}, using Portainer, Docker, Docker Compose, Kubernetes or Podman. `
-    + `Portainer-Templates is a community driven repository of Portainer Templates for Self-Hosted apps. \n`
-    + `${t.description}`;
+    `How to install ${t.title} with Docker, Docker Compose, Portainer, Kubernetes or Podman. ${t.description}`;
+
+  // Latest published tag, ignoring the rolling "latest" alias which isn't a real version
+  const latestVersion = $derived.by(() => {
+    const v = dockerMeta?.latestVersion ?? project?.latestRelease ?? '';
+    return v && v.toLowerCase() !== 'latest' ? v : '';
+  });
+
+  // The upstream app author is the repo owner, not the template maintainer
+  const appAuthor = $derived.by(() => {
+    if (!project) return null;
+    const owner = project.repo.split('/')[0] || project.repo;
+    return { '@type': 'Organization', name: owner, url: project.url };
+  });
 
   // escape < so the JSON can't break out of the script tag
-  const jsonLd = $derived(JSON.stringify({
+  const escapeLd = (obj: unknown) => JSON.stringify(obj).replace(/</g, '\\u003c');
+
+  const jsonLd = $derived(escapeLd({
     '@context': 'https://schema.org',
     '@type': 'SoftwareApplication',
     name: template.title,
     description: template.description,
     applicationCategory: template.categories?.[0] ?? 'DeveloperApplication',
-    operatingSystem: 'Docker',
+    operatingSystem: 'Linux',
     offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
     url: `${baseUrl}/${urlSlug}`,
     ...(template.logo ? { image: template.logo } : {}),
-  }).replace(/</g, '\\u003c'));
+    ...(latestVersion ? { softwareVersion: latestVersion } : {}),
+    ...(sourceHref ? { downloadUrl: sourceHref } : {}),
+    ...(project?.releasedAt ? { datePublished: project.releasedAt } : {}),
+    ...(project?.updatedAt ? { dateModified: project.updatedAt } : {}),
+    ...(appAuthor ? { author: appAuthor } : {}),
+  }));
+
+  // Mirrors the visible "Install on Portainer" steps, so the markup matches what's on the page
+  const howToLd = $derived(escapeLd({
+    '@context': 'https://schema.org',
+    '@type': 'HowTo',
+    name: `How to install ${template.title} with Portainer`,
+    description: `Deploy ${template.title} on your own server using Portainer's one-click app templates.`,
+    ...(template.logo ? { image: template.logo } : {}),
+    totalTime: 'PT5M',
+    step: [
+      { '@type': 'HowToStep', position: 1, name: 'Install Docker and Portainer', text: 'Ensure both Docker and Portainer are installed and up to date.' },
+      { '@type': 'HowToStep', position: 2, name: 'Log into Portainer', text: 'Log into your Portainer web UI.' },
+      { '@type': 'HowToStep', position: 3, name: 'Add the template URL', text: 'Under Settings → App Templates, paste the Portainer Templates import URL.' },
+      { '@type': 'HowToStep', position: 4, name: 'Open App Templates', text: 'Head to Home → App Templates, and the list of apps appears.' },
+      { '@type': 'HowToStep', position: 5, name: `Deploy ${template.title}`, text: `Select ${template.title}, fill in any config options, and hit Deploy.` },
+    ],
+  }));
 
 </script>
 
 <Meta
-  title="{template.title} | Portainer Templates"
+  title="Install {template.title} with Docker, Compose & Portainer"
   description={makeMetaDescription(template)}
   path="/{urlSlug}"
   image={template.logo}
@@ -90,6 +126,7 @@
 
 <svelte:head>
   {@html '<script type="application/ld+json">' + jsonLd + '</scr' + 'ipt>'}
+  {@html '<script type="application/ld+json">' + howToLd + '</scr' + 'ipt>'}
 </svelte:head>
 
 {#if template}

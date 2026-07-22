@@ -159,6 +159,9 @@ const POLICIES: RestartPolicy[] = ['always', 'unless-stopped', 'on-failure', 'no
 const stripRo = (path: string): [string, boolean] =>
   path.endsWith(':ro') ? [path.slice(0, -3), true] : [path, false];
 
+const dockerName = (name: string): string =>
+  name.trim().replace(/[^a-zA-Z0-9_.-]+/g, '-').replace(/^[^a-zA-Z0-9]+/, '').replace(/[-_.]+$/, '');
+
 const parsePort = (spec: string): PortRow => {
   const [address, protocol] = spec.split('/');
   const parts = address.split(':');
@@ -186,7 +189,7 @@ const bestWebPort = (ports: PortRow[]): string =>
   ports.map((p) => p.container).find((c) => WEB_PORTS.includes(c)) ?? ports[0]?.container ?? '';
 
 export const fromTemplate = (src: TemplateOrService): ServiceConfig => ({
-  name: src.name ?? '',
+  name: dockerName(src.name ?? ''),
   image: src.image ?? '',
   ports: (src.ports ?? []).map(parsePort),
   traefik: {
@@ -208,8 +211,8 @@ export const fromTemplate = (src: TemplateOrService): ServiceConfig => ({
     preset: env.preset,
   })),
   volumes: (src.volumes ?? []).map((vol) => {
-    const [container, roC] = stripRo(vol.container);
-    const [bind, roB] = stripRo(vol.bind ?? '');
+    const [container, roC] = stripRo(vol.container.trim());
+    const [bind, roB] = stripRo((vol.bind ?? '').trim());
     return { bind, container, readonly: !!vol.readonly || roC || roB };
   }),
   labels: (src.labels ?? []).map((label) => ({ name: label.name, value: label.value })),

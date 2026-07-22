@@ -1,5 +1,13 @@
+import snarkdown from 'snarkdown';
+
 export const slugify = (title: string): string =>
   title.toLowerCase().replace(/[^a-zA-Z ]/g, '').replaceAll(' ', '-');
+
+const markdownPattern = /\[[^\]]+\]\([^)]+\)|\*\*[^*]+\*\*|__[^_]+__|`[^`]+`|~~[^~]+~~/;
+
+// Parse markdown descriptions, dropping links to their label (cards are already links). Null if plaintext.
+export const parseDescription = (text: string): string | null =>
+  markdownPattern.test(text) ? snarkdown(text).replace(/<\/?a[^>]*>/gi, '') : null;
 
 export const formatBigNumber = (num: number): string => {
   if (!num) return '';
