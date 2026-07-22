@@ -27,7 +27,7 @@ const withReleaseNotes = async (meta: DockerMeta | null, project: ProjectStats |
 };
 
 /* Other apps sharing a category, A-Z. Pure local data, so it's free and always there. */
-const findSimilar = (allTemplates: Template[], current: Template, limit = 18): SimilarApp[] => {
+const findSimilar = (allTemplates: Template[], current: Template, limit = 12): SimilarApp[] => {
   const cats = new Set(current.categories ?? []);
   if (!cats.size) return [];
   const shared = (t: Template) => (t.categories ?? []).filter((c) => cats.has(c)).length;
