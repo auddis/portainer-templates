@@ -53,6 +53,9 @@
     --accent: #0ba5ec;
     --card: #1d2939;
     --card-2: #192432;
+    --red: #e5534b;
+    --green: #3fb950;
+    --blue: #0ba5ec;
     --shadow: 1px 1px 3px 3px #0B9AEC8F;
     --gradient: linear-gradient(to right,#0B9AEC 0%,#6EDFDE 100%);
     --max-width: 1800px;

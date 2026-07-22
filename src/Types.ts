@@ -168,12 +168,25 @@ export interface DockerCompose {
   volumes?: { [volumeName: string]: {} };
 }
 
+export interface ChangeItem {
+  name: string;
+  slug: string | null; // set when the template still resolves to a page on our site
+  fields?: string[]; // which template fields changed (updated items only)
+}
+
+export interface ChangelogChanges {
+  added: ChangeItem[];
+  updated: ChangeItem[];
+  removed: ChangeItem[];
+}
+
 export interface ChangelogEntry {
   version: string;
   date: string;
   isRelease: boolean; // minor/major versions get their full release notes shown
   title: string | null;
   notes: string | null;
+  changes: ChangelogChanges | null; // per-tag added/updated/removed from the auto-changelog
 }
 
 export interface DockerVersion {

@@ -1,6 +1,7 @@
 <script lang="ts">
   import snarkdown from 'snarkdown';
   import CopyLink from '$lib/CopyLink.svelte';
+  import Icon from '$lib/Icon.svelte';
   import { gitHubRepo } from '$src/constants';
   import type { ChangelogEntry } from '$src/Types';
 
@@ -18,27 +19,68 @@
       ? `${gitHubRepo}/releases/tag/${entry.version}`
       : `${gitHubRepo}/tree/${entry.version}`
   );
+
+  const showNotes = $derived(entry.isRelease && !!entry.notes);
+
+  /* Non-empty change groups for this tag, in a sensible reading order */
+  const groups = $derived(
+    entry.changes
+      ? ([
+          { key: 'added', label: 'Added', icon: 'added', items: entry.changes.added },
+          { key: 'updated', label: 'Updated', icon: 'updated', items: entry.changes.updated },
+          { key: 'removed', label: 'Removed', icon: 'removed', items: entry.changes.removed },
+        ] as const).filter((group) => group.items.length)
+      : []
+  );
 </script>
 
 <li class="entry" class:release={entry.isRelease}>
   <span class="marker" aria-hidden="true"></span>
   <div class="meta">
-    <a class="version" {href} target="_blank" rel="noreferrer">{entry.version}</a>
+    <h3 class="version-heading">
+      <a class="version" {href} target="_blank" rel="noreferrer">{entry.version}</a>
+    </h3>
     <time datetime={entry.date}>{formatDate(entry.date)}</time>
     <span class="copy"><CopyLink label="Get {entry.version} templates" url={templatesUrl} /></span>
   </div>
 
-  {#if entry.isRelease}
+  {#if showNotes}
     <div class="notes">
       {#if entry.title && entry.title !== entry.version}
         <h2>{entry.title}</h2>
       {/if}
-      {#if entry.notes}
-        <div class="markdown">{@html snarkdown(entry.notes)}</div>
-      {:else}
-        <p class="empty">No release notes provided.</p>
-      {/if}
+      <div class="markdown">{@html snarkdown(entry.notes ?? '')}</div>
     </div>
+  {:else if groups.length}
+    <div class="changes">
+      {#each groups as group (group.key)}
+        <section class="group" data-kind={group.key}>
+          <h4>
+            <Icon name={group.icon} width="14px" height="14px" />
+            {group.label}
+            <span class="count">{group.items.length}</span>
+          </h4>
+          <ul>
+            {#each group.items as item (item.name)}
+              <li>
+                {#if item.slug}
+                  <a href="/{item.slug}">{item.name}</a>
+                {:else}
+                  <span class="name">{item.name}</span>
+                {/if}
+                {#if item.fields?.length}
+                  <span class="fields">
+                    {#each item.fields as field (field)}<span class="chip">{field}</span>{/each}
+                  </span>
+                {/if}
+              </li>
+            {/each}
+          </ul>
+        </section>
+      {/each}
+    </div>
+  {:else if entry.isRelease}
+    <div class="notes"><p class="empty">No release notes provided.</p></div>
   {/if}
 </li>
 
@@ -73,6 +115,12 @@
       opacity: 0.5;
       transition: opacity 0.05s ease-in-out;
       &:hover, &:focus-within { opacity: 1; }
+    }
+    .version-heading {
+      margin: 0;
+      font-size: inherit;
+      font-weight: inherit;
+      line-height: inherit;
     }
     .version {
       font-size: 1.25rem;
@@ -128,6 +176,78 @@
       background: var(--card-2);
       padding: 0.1rem 0.3rem;
       border-radius: 4px;
+    }
+  }
+  .changes {
+    margin-top: 0.75rem;
+    background: var(--card);
+    border-radius: 6px;
+    padding: 0.85rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  .group {
+    &[data-kind='added'] { --kind: var(--green); }
+    &[data-kind='updated'] { --kind: var(--blue); }
+    &[data-kind='removed'] { --kind: var(--red); }
+    h4 {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      margin: 0 0 0.4rem;
+      font-size: 0.8rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--kind);
+    }
+    .count {
+      font-size: 0.7rem;
+      font-weight: 400;
+      color: var(--foreground);
+      opacity: 0.6;
+    }
+    ul {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+    }
+    li {
+      display: flex;
+      align-items: baseline;
+      flex-wrap: wrap;
+      gap: 0.2rem;
+      font-size: 0.95rem;
+    }
+    a {
+      color: var(--foreground);
+      text-decoration: none;
+      border-bottom: 1px solid transparent;
+      transition: color 0.1s ease-in-out;
+      &:hover, &:focus-visible {
+        color: var(--accent);
+        border-bottom-color: currentColor;
+      }
+    }
+    &[data-kind='removed'] .name {
+      text-decoration: line-through;
+      opacity: 0.65;
+    }
+    .fields {
+      display: inline-flex;
+      flex-wrap: wrap;
+      gap: 0.1rem;
+    }
+    .chip {
+      font-size: 0.65rem;
+      padding: 0.05rem 0.35rem;
+      border-radius: 4px;
+      background: var(--card-2);
+      color: var(--foreground);
+      opacity: 0.7;
     }
   }
 </style>
