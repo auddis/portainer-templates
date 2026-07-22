@@ -67,6 +67,25 @@ export const availableMethods = ({ template, services }: Pick<ConfigureResponse,
   return ids;
 };
 
+/* short, plain-English tooltips shown by HelpTip next to each field; keyed by field */
+export const HINTS = {
+  name: "The name your container shows up as in Docker and Portainer. Makes it easier to spot in logs and lists.",
+  restart: "Whether Docker starts the container again after a crash or reboot. 'Unless stopped' is a safe pick for most apps.",
+  ports: "Maps a port on your machine to one inside the container, so you can reach the app. Host port on the left, container port on the right.",
+  env: "Settings handed to the app on startup, like timezone, user IDs or API keys. Check the app's docs for the ones it accepts.",
+  volumes: "Keeps data on your machine so it survives the container being recreated. Host path or named volume on the left, container path on the right.",
+  image: "The Docker image to run, with an optional tag for the version, like 'nginx:latest'.",
+  network: "The Docker network the container joins. Leave blank for the default, or use 'host' to share your machine's network directly.",
+  hostname: "The name the container uses for itself on the network. Usually fine to leave blank.",
+  entrypoint: "Replaces the first command the image runs. Only set this if the app's docs ask you to.",
+  command: "Replaces the default arguments the container starts with. Leave blank to keep the image's own.",
+  user: "Runs the app as a set user and group ID instead of root, so file permissions line up with your host.",
+  cpus: "The most CPU cores the container may use, like 1.5. Leave blank for no limit.",
+  memory: "The most memory the container may use, like 512m or 2g. Leave blank for no limit.",
+  devices: "Shares a piece of hardware from your machine, such as a GPU or serial device, with the container.",
+  labels: "Extra key/value tags on the container, often read by tools like Traefik or Watchtower.",
+} as const;
+
 export interface PortRow { host: string; container: string; protocol: 'tcp' | 'udp' }
 export interface EnvRow { name: string; value: string; fixed?: boolean; label?: string; description?: string; select?: SelectOption[]; preset?: boolean }
 export interface VolumeRow { bind: string; container: string; readonly: boolean }
@@ -208,7 +227,7 @@ export const fromTemplate = (src: TemplateOrService): ServiceConfig => ({
   memory: src.memory ?? '',
   privileged: !!src.privileged,
   interactive: !!src.interactive,
-  gpu: false,
+  gpu: !!src.gpu,
   envFile: false,
   dependsOn: src.depends_on,
   healthcheck: src.healthcheck,

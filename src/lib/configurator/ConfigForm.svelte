@@ -1,5 +1,7 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
+  import snarkdown from 'snarkdown';
+  import HelpTip from './HelpTip.svelte';
   import { patterns, secretEnv, emptyPort, emptyEnv, emptyVolume, emptyLabel, emptyDevice, ALL_FIELDS, type ServiceConfig, type MethodFields } from './config';
 
   let { config = $bindable(), nameRequired = false, imageRequired = false, fields = ALL_FIELDS, traefikKind = 'labels', envFileKind = 'env', extras }: {
@@ -15,6 +17,9 @@
   const id = $props.id();
   let advanced = $state(false);
   let revealed = $state(-1);
+
+  /* render a field description as markdown, but keep stray [brackets] as text (snarkdown turns them into dead links) */
+  const renderDesc = (md: string) => snarkdown(md).replace(/<a href="undefined">(.*?)<\/a>/g, '[$1]');
   const domainPlaceholder = $derived(`${(config.name || 'app').toLowerCase().replace(/[^a-z0-9-]/g, '-')}.example.com`);
 </script>
 
@@ -23,13 +28,13 @@
     <legend>General</legend>
     <div class="grid">
       <label>
-        <span>Container name</span>
+        <span>Container name <HelpTip for="name" /></span>
         <input type="text" bind:value={config.name} pattern={patterns.name} required={nameRequired}
           placeholder="my-app" title="What to call the container" spellcheck="false" autocomplete="off" />
       </label>
       {#if fields.restart}
         <label>
-          <span>Restart policy</span>
+          <span>Restart policy <HelpTip for="restart" /></span>
           <select bind:value={config.restart} title="When the container should restart automatically">
             <option value="unless-stopped">Unless stopped</option>
             <option value="always">Always</option>
@@ -43,7 +48,7 @@
   </fieldset>
 
   <fieldset class="panel">
-    <legend>Ports</legend>
+    <legend>Ports <HelpTip for="ports" /></legend>
     <div class="rows">
       {#each config.ports as port, i (i)}
         <div class="row ports">
@@ -67,13 +72,16 @@
   </fieldset>
 
   <fieldset class="panel">
-    <legend>Environment variables</legend>
+    <legend>Environment variables <HelpTip for="env" /></legend>
     <div class="rows">
       {#each config.env as env, i (i)}
         <div class="row env">
           {#if env.fixed}
-            <span class="key" title={env.description || env.name}>
-              {env.label || env.name}
+            <span class="key" title={env.name}>
+              <span class="name">
+                {env.label || env.name}
+                {#if env.description}<HelpTip tip={renderDesc(env.description)} html align="right" />{/if}
+              </span>
               {#if env.label && env.label !== env.name}<code>{env.name}</code>{/if}
             </span>
           {:else}
@@ -93,7 +101,7 @@
               onfocus={() => (revealed = i)} onblur={() => (revealed = -1)}
               disabled={env.preset} placeholder="value"
               aria-label="Value for {env.name || 'new variable'}"
-              title={env.preset ? 'Preset by the template' : env.description}
+              title={env.preset ? 'Preset by the template' : undefined}
               spellcheck="false" autocomplete={masked ? 'new-password' : 'off'} />
           {/if}
           <button type="button" class="remove" onclick={() => config.env.splice(i, 1)}
@@ -113,7 +121,7 @@
   </fieldset>
 
   <fieldset class="panel">
-    <legend>Volumes</legend>
+    <legend>Volumes <HelpTip for="volumes" /></legend>
     <div class="rows">
       {#each config.volumes as vol, i (i)}
         <div class="row volumes">
@@ -145,12 +153,12 @@
       <legend>Advanced</legend>
       <div class="grid">
         <label>
-          <span>Image</span>
+          <span>Image <HelpTip for="image" /></span>
           <input type="text" bind:value={config.image} pattern={patterns.image} required={imageRequired}
             placeholder="image:tag" title="Container image, with an optional tag" spellcheck="false" autocomplete="off" />
         </label>
         <label>
-          <span>Network</span>
+          <span>Network <HelpTip for="network" /></span>
           <input type="text" bind:value={config.network} pattern={patterns.network} list="{id}-networks"
             placeholder="bridge (default)" title="Docker network to join, or a network mode"
             spellcheck="false" autocomplete="off" />
@@ -161,32 +169,32 @@
           <option value="none"></option>
         </datalist>
         <label>
-          <span>Hostname</span>
+          <span>Hostname <HelpTip for="hostname" /></span>
           <input type="text" bind:value={config.hostname} pattern={patterns.hostname} placeholder="optional"
             title="Hostname inside the container" spellcheck="false" autocomplete="off" />
         </label>
         <label>
-          <span>Entrypoint</span>
+          <span>Entrypoint <HelpTip for="entrypoint" /></span>
           <input type="text" bind:value={config.entrypoint} placeholder="image default"
             title="Override the image entrypoint" spellcheck="false" autocomplete="off" />
         </label>
         <label>
-          <span>Command</span>
+          <span>Command <HelpTip for="command" /></span>
           <input type="text" bind:value={config.command} placeholder="image default"
             title="Override the image start command" spellcheck="false" autocomplete="off" />
         </label>
         <label>
-          <span>User</span>
+          <span>User <HelpTip for="user" /></span>
           <input type="text" bind:value={config.user} pattern={patterns.user} placeholder="uid:gid"
             title="User (and optionally group) to run as" spellcheck="false" autocomplete="off" />
         </label>
         <label>
-          <span>CPU limit</span>
+          <span>CPU limit <HelpTip for="cpus" /></span>
           <input type="text" inputmode="decimal" bind:value={config.cpus} pattern={patterns.cpus}
             placeholder="e.g. 1.5" title="Max CPUs the container can use" spellcheck="false" autocomplete="off" />
         </label>
         <label>
-          <span>Memory limit</span>
+          <span>Memory limit <HelpTip for="memory" /></span>
           <input type="text" bind:value={config.memory} pattern={patterns.memory} placeholder="e.g. 512m"
             title="Max memory, like 512m or 2g" spellcheck="false" autocomplete="off" />
         </label>
@@ -264,7 +272,7 @@
 
     {#if fields.devices}
       <fieldset class="panel">
-        <legend>Devices</legend>
+        <legend>Devices <HelpTip for="devices" /></legend>
         <div class="rows">
           {#each config.devices as dev, i (i)}
             <div class="row devices">
@@ -284,7 +292,7 @@
       </fieldset>
     {/if}
     <fieldset class="panel">
-      <legend>Labels</legend>
+      <legend>Labels <HelpTip for="labels" /></legend>
       <div class="rows">
         {#each config.labels as label, i (i)}
           <div class="row labels">
@@ -318,6 +326,10 @@
       background: var(--card-2);
       legend {
         float: left;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.5rem;
         width: 100%;
         padding: 0;
         margin: 0 0 0.6rem;
@@ -325,7 +337,7 @@
         font-weight: 500;
         letter-spacing: 0.05em;
         text-transform: uppercase;
-        opacity: 0.6;
+        color: color-mix(in srgb, var(--foreground) 60%, transparent);
       }
       .grid,
       .rows {
@@ -358,7 +370,11 @@
       gap: 0.3rem;
       font-size: 0.85rem;
       > span:first-child {
-        opacity: 0.8;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.5rem;
+        color: color-mix(in srgb, var(--foreground) 80%, transparent);
       }
     }
     .row {
@@ -377,6 +393,11 @@
         display: flex;
         flex-direction: column;
         overflow-wrap: anywhere;
+        .name {
+          display: flex;
+          align-items: center;
+          gap: 0.3rem;
+        }
         code {
           font-size: 0.7rem;
           opacity: 0.6;
