@@ -7,7 +7,7 @@
 
   const makeRenderData = () => [
     { label: 'Pulls', value: formatBigNumber(info.pull_count), icon: 'download' },
-    { label: 'Architectures', value: meta?.architectures.join(', ') ?? '', icon: 'container' },
+    { label: 'Architecture', value: meta?.architectures.join(', ') ?? '', icon: 'container' },
     { label: 'Image size', value: formatBytes(meta?.size ?? null), icon: 'stack' },
     { label: 'Latest', value: meta?.latestVersion ?? '', icon: 'changelog' },
     { label: 'User', value: info.hub_user, icon: 'user' },

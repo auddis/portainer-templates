@@ -8,6 +8,7 @@
   let { versions }: { versions: DockerMeta['versions'] } = $props();
 
   let sectionOpen = $state(true);
+  let showAll = $state(false);
   let open = $state<string | null>(null);
   const toggle = (name: string) => { open = open === name ? null : name; };
 
@@ -19,38 +20,50 @@
   };
 </script>
 
+{#snippet row(version: DockerVersion)}
+  <li>
+    <button class="row" class:expanded={open === version.name} aria-expanded={open === version.name} onclick={() => toggle(version.name)}>
+      <code class="tag">{version.name}</code>
+      <span class="size">{formatBytes(version.size)}</span>
+      <time datetime={version.date}>{formatDate(version.date)}</time>
+      <span class="row-chevron">▸</span>
+    </button>
+    {#if open === version.name}
+      <div class="details" transition:slide>
+        {#if version.platforms?.length}
+          <p class="platforms">
+            {#each version.platforms as platform (platform)}<span class="chip">{platform}</span>{/each}
+          </p>
+        {/if}
+        {#if version.release}
+          {#if releaseTitle(version)}<h3>{releaseTitle(version)}</h3>{/if}
+          {#if version.release.notes}
+            <div class="notes">{@html snarkdown(version.release.notes)}</div>
+          {/if}
+          <a href={version.release.url} target="_blank" rel="noopener noreferrer">View release on GitHub</a>
+        {:else}
+          <p class="none">No release notes found for this version</p>
+        {/if}
+      </div>
+    {/if}
+  </li>
+{/snippet}
+
 {#if versions.length}
 <Collapsible title="Recent versions" bind:open={sectionOpen}>
   <ul class="versions">
-    {#each versions as version (version.name)}
-      <li>
-        <button class="row" class:expanded={open === version.name} aria-expanded={open === version.name} onclick={() => toggle(version.name)}>
-          <code class="tag">{version.name}</code>
-          <span class="size">{formatBytes(version.size)}</span>
-          <time datetime={version.date}>{formatDate(version.date)}</time>
-          <span class="row-chevron">▸</span>
-        </button>
-        {#if open === version.name}
-          <div class="details" transition:slide>
-            {#if version.platforms?.length}
-              <p class="platforms">
-                {#each version.platforms as platform (platform)}<span class="chip">{platform}</span>{/each}
-              </p>
-            {/if}
-            {#if version.release}
-              {#if releaseTitle(version)}<h3>{releaseTitle(version)}</h3>{/if}
-              {#if version.release.notes}
-                <div class="notes">{@html snarkdown(version.release.notes)}</div>
-              {/if}
-              <a href={version.release.url} target="_blank" rel="noopener noreferrer">View release on GitHub</a>
-            {:else}
-              <p class="none">No release notes found for this version</p>
-            {/if}
-          </div>
-        {/if}
-      </li>
-    {/each}
+    {#each versions.slice(0, 5) as version (version.name)}{@render row(version)}{/each}
   </ul>
+  {#if versions.length > 5}
+    {#if showAll}
+      <ul class="versions extra" transition:slide>
+        {#each versions.slice(5) as version (version.name)}{@render row(version)}{/each}
+      </ul>
+    {/if}
+    <button class="show-more" onclick={() => (showAll = !showAll)}>
+      {showAll ? 'Show less' : `Show ${versions.length - 5} more`}
+    </button>
+  {/if}
 </Collapsible>
 {/if}
 
@@ -62,6 +75,9 @@
     display: flex;
     flex-direction: column;
     gap: 0.4rem;
+    &.extra {
+      margin-top: 0.4rem;
+    }
     li {
       background: var(--card-2);
       border-radius: 6px;
@@ -157,5 +173,14 @@
         transition: none;
       }
     }
+  }
+  .show-more {
+    margin-top: 0.5rem;
+    padding: 0.3rem 0;
+    background: none;
+    border: none;
+    color: var(--accent);
+    font: inherit;
+    cursor: pointer;
   }
 </style>
