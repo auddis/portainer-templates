@@ -146,14 +146,20 @@ async function build(): Promise<SearchIndex> {
   const hubImages = [...new Set(images.filter((img): img is string => !!img && !!parseImage(img)))];
   console.log(`[search-index] fetching docker hub stats for ${hubImages.length} images`);
   const hub = new Map(
-    await pool(hubImages, async (img) => {
-      const { ns, repo } = parseImage(img)!;
-      const stats = await hubJson<DockerHubResponse>(`https://hub.docker.com/v2/repositories/${ns}/${repo}/`);
-      const tags = stats
-        ? await hubJson<{ results: DhTag[] }>(`https://hub.docker.com/v2/repositories/${ns}/${repo}/tags/?page_size=100&ordering=last_updated`)
-        : null;
-      const meta = tags?.results?.length ? summarise(tags.results) : null;
-      return [img, { stats, meta }] as const;
+    await pool(hubImages, async (img, i) => {
+      console.log(`[search-index] hub ${i + 1}/${hubImages.length} ${img}`);
+      try {
+        const { ns, repo } = parseImage(img)!;
+        const stats = await hubJson<DockerHubResponse>(`https://hub.docker.com/v2/repositories/${ns}/${repo}/`);
+        const tags = stats
+          ? await hubJson<{ results: DhTag[] }>(`https://hub.docker.com/v2/repositories/${ns}/${repo}/tags/?page_size=100&ordering=last_updated`)
+          : null;
+        const meta = tags?.results?.length ? summarise(tags.results) : null;
+        return [img, { stats, meta }] as const;
+      } catch (e) {
+        console.warn(`[search-index] hub fail ${img}: ${(e as Error).message}`);
+        return [img, { stats: null, meta: null }] as const;
+      }
     }),
   );
 
