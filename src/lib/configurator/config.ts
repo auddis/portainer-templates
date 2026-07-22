@@ -1,4 +1,4 @@
-import { envValue } from '$src/utils/template-to-docker-parser';
+import { convertToKubernetes, convertToQuadlet, convertToSwarmStack, envValue } from '$src/utils/template-to-docker-parser';
 import type { DependsOn, DockerMeta, Label, RestartPolicy, SelectOption, Service, Template, TemplateOrService } from '$src/Types';
 
 export interface AppOption {
@@ -20,6 +20,31 @@ export interface ConfigureResponse {
   stats: { pulls: number; updated: string } | null;
   github: GithubLink | null;
 }
+
+// the subset MethodConfigurator needs, so pages can feed it their own data
+export type ConfigData = Pick<ConfigureResponse, 'template' | 'services' | 'meta'>;
+
+export type MethodId = 'docker-run' | 'docker-compose' | 'docker-swarm' | 'kubernetes' | 'podman-quadlet';
+
+export const METHODS: { id: MethodId; label: string; icon: string }[] = [
+  { id: 'docker-run', label: 'Docker Run', icon: 'docker.png' },
+  { id: 'docker-compose', label: 'Docker Compose', icon: 'docker-compose.png' },
+  { id: 'docker-swarm', label: 'Docker Swarm', icon: 'docker-swarm.png' },
+  { id: 'kubernetes', label: 'Kubernetes', icon: 'kubernetes.png' },
+  { id: 'podman-quadlet', label: 'Podman Quadlet', icon: 'podman.png' },
+];
+
+export const availableMethods = ({ template, services }: Pick<ConfigureResponse, 'template' | 'services'>): MethodId[] => {
+  if (services.length > 1) {
+    return services.some((s) => s.image) ? ['docker-run', 'docker-compose'] : ['docker-compose'];
+  }
+  if (!template.image) return [];
+  const ids: MethodId[] = ['docker-run', 'docker-compose'];
+  if (convertToSwarmStack(template)) ids.push('docker-swarm');
+  if (convertToKubernetes(template)) ids.push('kubernetes');
+  if (convertToQuadlet(template)) ids.push('podman-quadlet');
+  return ids;
+};
 
 export interface PortRow { host: string; container: string; protocol: 'tcp' | 'udp' }
 export interface EnvRow { name: string; value: string; fixed?: boolean; label?: string; description?: string; select?: SelectOption[]; preset?: boolean }

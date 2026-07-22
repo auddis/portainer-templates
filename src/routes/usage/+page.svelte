@@ -1,5 +1,5 @@
 <script lang="ts">
-    import InstallationInstructions from '$lib/InstallationInstructions.svelte';
+    import PortainerInstall from '$lib/PortainerInstall.svelte';
     import Configurator from '$lib/configurator/Configurator.svelte';
     import Meta from '$lib/Meta.svelte';
 </script>
@@ -10,5 +10,5 @@
   path="/usage"
 />
 
-<InstallationInstructions heading="h1" portainerOnly />
+<PortainerInstall heading="h1" />
 <Configurator />

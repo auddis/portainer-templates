@@ -11,7 +11,8 @@
   import MdContent from '$lib/MdContent.svelte';
   import Note from '$lib/Note.svelte';
   import Logo from '$lib/Logo.svelte';
-  import InstallationInstructions from '$lib/InstallationInstructions.svelte';
+  import InstallSection from '$lib/configurator/InstallSection.svelte';
+  import PortainerInstall from '$lib/PortainerInstall.svelte';
   import ReverseProxy from '$lib/ReverseProxy.svelte';
   import Troubleshooting from '$lib/Troubleshooting.svelte';
   import Meta from '$lib/Meta.svelte';
@@ -150,7 +151,8 @@
     </section>
   {/if}
 
-  <InstallationInstructions portainerTemplate={template} portainerServices={services.length ? services : null} {stackfile} {project} />
+  <InstallSection {template} {services} meta={dockerMeta} />
+  <PortainerInstall {template} {stackfile} {project} />
 
   {#if dockerStats?.full_description}
     <MdContent content={dockerStats.full_description} />
