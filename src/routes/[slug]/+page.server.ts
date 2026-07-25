@@ -2,8 +2,10 @@ import { error } from '@sveltejs/kit';
 import { loadTemplates, getServices, mergeEnv } from '$lib/server/templates';
 import { getDockerHubStats, getDockerMeta } from '$lib/server/dockerhub';
 import { getProjectStats, getReadme, getReleases } from '$lib/server/github';
+import { getSearchIndex } from '$lib/server/search-index';
+import { searchEntries } from '$lib/search';
 import { slugify } from '$lib/format';
-import type { Template, Service, SimilarApp, DockerMeta, ProjectStats } from '$src/Types';
+import type { Template, Service, SimilarApp, DockerMeta, ProjectStats, SearchEntry } from '$src/Types';
 import type { PageServerLoad } from './$types';
 
 type Fetch = typeof globalThis.fetch;
@@ -11,6 +13,30 @@ type Fetch = typeof globalThis.fetch;
 /* Based on the current page name, find the corresponding template */
 const findTemplate = (allTemplates: Template[], slug: string) => {
   return allTemplates.find((temp) => slugify(temp.title) === slug);
+};
+
+/* Give up on a promise after ms, resolving to null rather than hanging the page */
+const withTimeout = <T>(p: Promise<T>, ms: number): Promise<T | null> =>
+  Promise.race([p, new Promise<null>((res) => setTimeout(() => res(null), ms))]);
+
+/* Slim a template down to the fields the search results list needs (no third-party stats) */
+const toSearchEntry = (t: Template): SearchEntry => ({
+  slug: slugify(t.title),
+  title: t.title,
+  description: t.description ?? '',
+  type: t.type,
+  ...(t.logo && { logo: t.logo }),
+  ...(t.categories?.length && { categories: t.categories }),
+  ...(t.platform && { platform: t.platform }),
+  ...(t.image && { image: t.image }),
+});
+
+/* Entries to search when a slug 404s: the enriched index for stats, or the plain list if it's slow */
+const fallbackEntries = async (allTemplates: Template[]): Promise<SearchEntry[]> => {
+  const index = await withTimeout(getSearchIndex(), 2500).catch(() => null);
+  if (index) return index.entries;
+  const seen = new Set<string>();
+  return allTemplates.map(toSearchEntry).filter((e) => e.slug && !seen.has(e.slug) && seen.add(e.slug));
 };
 
 /* Match docker tags to github releases, so each version can show its release notes */
@@ -47,7 +73,12 @@ const findSimilar = (allTemplates: Template[], current: Template, limit = 12): S
 const returnResults = async (allTemplates: Template[], templateSlug: string, fetch: Fetch) => {
   // Find template, based on slug
   let template = findTemplate(allTemplates, templateSlug);
-  if (!template) throw error(404, `No template named "${templateSlug}"`);
+  if (!template) {
+    // No such page. If the slug reads like a search, 404 but carry the results it would've matched
+    const query = templateSlug.replace(/[-_]+/g, ' ');
+    const matches = searchEntries(await fallbackEntries(allTemplates), query, 24);
+    throw error(404, matches.length ? { message: `No template named "${templateSlug}"`, query, matches } : `No template named "${templateSlug}"`);
+  }
 
   // Fetch service info from associated stackfile, if it exists
   let { services, stackfile } = await getServices(template, fetch);

@@ -1,13 +1,12 @@
 <script lang="ts">
-  import snarkdown from 'snarkdown';
   import { browser } from '$app/environment';
   import { replaceState } from '$app/navigation';
   import { page } from '$app/state';
   import Meta from '$lib/Meta.svelte';
-  import Logo from '$lib/Logo.svelte';
-  import Icon from '$lib/Icon.svelte';
   import NoResults from '$lib/NoResults.svelte';
-  import { formatBigNumber, formatBytes, timeAgo } from '$lib/format';
+  import SearchResults from '$lib/SearchResults.svelte';
+  import { timeAgo } from '$lib/format';
+  import { buildDoc, lastUpdated, rankDoc, tokenize } from '$lib/search';
   import { baseUrl } from '$src/constants';
   import type { SearchEntry } from '$src/Types';
   import type { PageData } from './$types';
@@ -26,9 +25,6 @@
     url: `${baseUrl}/search`,
     description,
   }).replace(/</g, '\\u003c');
-
-  const lastUpdated = (e: SearchEntry): number | undefined =>
-    Math.max(Date.parse(e.imageUpdated ?? '') || 0, Date.parse(e.ghUpdated ?? '') || 0) || undefined;
 
   type SortId = 'match' | 'pulls' | 'dockerStars' | 'ghStars' | 'updated' | 'newest' | 'size' | 'title';
   const sorts: Record<SortId, { label: string; value: (e: SearchEntry) => number | string | undefined; dir: 1 | -1 }> = {
@@ -65,57 +61,12 @@
   let maxSize = $state(param('size'));
   let pageNum = $state(Math.max(1, Number(param('page')) || 1));
 
-  // markdown sneaks into some descriptions, flatten it for display and matching
-  const plainText = (md: string) => snarkdown(md).replace(/<[^>]*>/g, '');
+  const docs = $derived(data.entries.map(buildDoc));
 
-  const docs = $derived(
-    data.entries.map((entry) => {
-      const plain = plainText(entry.description);
-      return {
-        entry,
-        plain,
-        title: entry.title.toLowerCase(),
-        text: plain.toLowerCase(),
-        tags: [entry.slug, ...(entry.categories ?? []), entry.image ?? '', entry.ghRepo ?? '', entry.language ?? '']
-          .join(' ')
-          .toLowerCase(),
-      };
-    }),
-  );
-  type Doc = (typeof docs)[number];
-
-  // chars just need to appear in order, so "grfana" still finds grafana
-  const subsequence = (needle: string, hay: string) => {
-    let i = 0;
-    for (const c of hay) if (c === needle[i]) i++;
-    return i === needle.length;
-  };
-
-  const tokenScore = (t: string, d: Doc): number => {
-    if (d.title === t) return 100;
-    if (d.title.startsWith(t)) return 60;
-    if (d.title.includes(t)) return 40;
-    if (d.tags.includes(t)) return 25;
-    if (d.text.includes(t)) return 15;
-    if (t.length > 2 && subsequence(t, d.title)) return 8;
-    return 0;
-  };
-
-  // every word must hit somewhere, closer hits rank higher
-  const rankOf = (d: Doc, words: string[]): number => {
-    let total = 0;
-    for (const w of words) {
-      const s = tokenScore(w, d);
-      if (!s) return 0;
-      total += s;
-    }
-    return total;
-  };
-
-  const tokens = $derived(q.trim().toLowerCase().split(/\s+/).filter(Boolean));
+  const tokens = $derived(tokenize(q));
   const matches = $derived(
     docs
-      .map((d) => ({ ...d, rank: tokens.length ? rankOf(d, tokens) : 0 }))
+      .map((d) => ({ ...d, rank: tokens.length ? rankDoc(d, tokens) : 0 }))
       .filter(({ entry, rank }) => {
         if (tokens.length && !rank) return false;
         if (category && !(entry.categories ?? []).some((c) => c.toLowerCase() === category)) return false;
@@ -186,20 +137,6 @@
       // router not ready on first run, no harm done
     }
   });
-
-  const num = (n: number) => (n ? formatBigNumber(n) : '0');
-
-  type Stat = { icon: string; label: string; value: string };
-  const rowStats = (e: SearchEntry): Stat[] => {
-    const updated = lastUpdated(e);
-    return [
-      e.pulls != null && { icon: 'download', label: 'Docker Hub downloads', value: num(e.pulls) },
-      e.dockerStars != null && { icon: 'star', label: 'Docker Hub stars', value: num(e.dockerStars) },
-      e.ghStars != null && { icon: 'github', label: 'GitHub stars', value: num(e.ghStars) },
-      !!e.size && { icon: 'stack', label: 'Compressed size', value: formatBytes(e.size) },
-      !!updated && { icon: 'updated', label: 'Last updated', value: timeAgo(new Date(updated).toISOString()) },
-    ].filter((s): s is Stat => !!s);
-  };
 </script>
 
 <Meta title="App Search | Portainer Templates" {description} path="/search" />
@@ -295,33 +232,7 @@
   </p>
 
   {#if results.length}
-    <ol class="results">
-      {#each results as { entry, plain } (entry.slug)}
-        <li>
-          <a class="row" href="/{entry.slug}">
-            <Logo src={entry.logo} name={entry.title} />
-            <div class="info">
-              <h2>{entry.title}</h2>
-              <p class="description">{plain}</p>
-              {#if entry.architectures?.length}
-                <p class="archs" title="Supported architectures">
-                  {#each entry.architectures.slice(0, 4) as a (a)}<span>{a}</span>{/each}
-                  {#if entry.architectures.length > 4}<span>+{entry.architectures.length - 4}</span>{/if}
-                </p>
-              {/if}
-            </div>
-            <dl class="stats">
-              {#each rowStats(entry) as stat (stat.label)}
-                <div class="stat" title={stat.label}>
-                  <dt class="sr-only">{stat.label}</dt>
-                  <dd><Icon name={stat.icon} color="var(--accent)" /> {stat.value}</dd>
-                </div>
-              {/each}
-            </dl>
-          </a>
-        </li>
-      {/each}
-    </ol>
+    <SearchResults items={results} />
   {:else}
     <NoResults />
   {/if}
@@ -420,77 +331,6 @@
     opacity: 0.7;
   }
 
-  .results {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-
-    .row {
-      display: grid;
-      grid-template-columns: auto 1fr auto;
-      gap: 1rem;
-      align-items: center;
-      background: var(--card);
-      border-radius: 6px;
-      padding: 0.75rem 1rem;
-      color: var(--foreground);
-      text-decoration: none;
-      transition: all 0.3s ease-in-out;
-      &:hover { box-shadow: var(--shadow); }
-    }
-    .info {
-      min-width: 0;
-      h2 {
-        margin: 0;
-        font-size: 1.2rem;
-        font-weight: 600;
-      }
-      .description {
-        margin: 0;
-        font-style: italic;
-        font-weight: 200;
-        overflow: hidden;
-        word-break: break-word;
-        display: -webkit-box;
-        -webkit-box-orient: vertical;
-        -webkit-line-clamp: 2;
-        line-clamp: 2;
-      }
-      .archs {
-        margin: 0.35rem 0 0;
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.3rem;
-        span {
-          background: var(--card-2);
-          border-radius: 4px;
-          padding: 0 0.35rem;
-          font-size: 0.7rem;
-          opacity: 0.8;
-        }
-      }
-    }
-    .stats {
-      margin: 0;
-      display: grid;
-      grid-template-columns: repeat(3, auto);
-      gap: 0.3rem 1rem;
-      justify-items: start;
-      .stat dd {
-        margin: 0;
-        display: flex;
-        align-items: center;
-        gap: 0.4rem;
-        font-size: 0.9rem;
-        white-space: nowrap;
-        :global(svg) { opacity: 0.8; }
-      }
-    }
-  }
-
   .pagination {
     display: flex;
     flex-wrap: wrap;
@@ -514,32 +354,12 @@
     .gap { align-self: center; opacity: 0.5; }
   }
 
-  .sr-only {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    margin: -1px;
-    padding: 0;
-    overflow: hidden;
-    clip: rect(0 0 0 0);
-    white-space: nowrap;
-    border: 0;
-  }
-
   @media (max-width: 768px) {
     .search-page h1 { font-size: 2rem; }
-    .results .row {
-      grid-template-columns: auto 1fr;
-      .stats {
-        grid-column: 1 / -1;
-        grid-template-columns: repeat(auto-fit, minmax(5.5rem, max-content));
-        width: 100%;
-      }
-    }
   }
 
   @media (prefers-reduced-motion: reduce) {
     .controls input, .controls select, .controls .clear,
-    .results .row, .pagination button { transition: none; }
+    .pagination button { transition: none; }
   }
 </style>

@@ -21,6 +21,7 @@
   import type { Template, Service, DockerHubResponse, DockerMeta, ProjectStats as ProjectStatsType, SimilarApp } from '$src/Types';
 
   const urlSlug = $derived(page.params.slug ?? '');
+
   const template = $derived(page.data.template as Template);
   const dockerStats = $derived(page.data.dockerStats as DockerHubResponse | null);
   const dockerMeta = $derived(page.data.dockerMeta as DockerMeta | null);
@@ -117,17 +118,17 @@
 
 </script>
 
+<svelte:head>
+  {@html '<script type="application/ld+json">' + jsonLd + '</scr' + 'ipt>'}
+  {@html '<script type="application/ld+json">' + howToLd + '</scr' + 'ipt>'}
+</svelte:head>
+
 <Meta
   title="Install {template.title} with Docker, Compose & Portainer"
   description={makeMetaDescription(template)}
   path="/{urlSlug}"
   image={template.logo}
 />
-
-<svelte:head>
-  {@html '<script type="application/ld+json">' + jsonLd + '</scr' + 'ipt>'}
-  {@html '<script type="application/ld+json">' + howToLd + '</scr' + 'ipt>'}
-</svelte:head>
 
 {#if template}
   <section class="summary-section">
@@ -216,6 +217,7 @@
     max-width: 1000px;
     margin: 1rem auto;
   }
+
   .summary-section {
     background: var(--card);
     border-radius: 6px;
