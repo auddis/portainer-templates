@@ -225,6 +225,13 @@ export interface SimilarApp {
   category?: string;
 }
 
+// One deployment method for an app that ships in several (container / stack / swarm)
+export interface DeployMode {
+  type: 1 | 2 | 3 | 4;
+  slug: string;
+  current: boolean;
+}
+
 export interface SearchEntry {
   slug: string;
   title: string;

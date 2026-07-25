@@ -10,6 +10,7 @@ import { templatesUrl } from '$src/constants';
 import type { DockerHubResponse, SearchEntry, SearchIndex, Template } from '$src/Types';
 
 const DAY = 86_400_000;
+const CACHE_TTL_MS = 7 * DAY;
 const CONCURRENCY = 8;
 const HUB_GAP_MS = 100;
 const CACHE_VERSION = 1;
@@ -77,7 +78,7 @@ async function hubJson<T>(url: string, attempts = 3): Promise<T | null> {
 function readCache(): SearchIndex | null {
   try {
     const raw = JSON.parse(fs.readFileSync(CACHE_FILE, 'utf8'));
-    const fresh = raw.version === CACHE_VERSION && Date.now() - new Date(raw.generated).getTime() < DAY;
+    const fresh = raw.version === CACHE_VERSION && Date.now() - new Date(raw.generated).getTime() < CACHE_TTL_MS;
     return fresh ? { generated: raw.generated, entries: raw.entries } : null;
   } catch {
     return null;
@@ -224,4 +225,9 @@ export function getSearchIndex(): Promise<SearchIndex> {
   })();
   pending.catch(() => (pending = null));
   return pending;
+}
+
+// The on-disk index if it's present and fresh, without ever kicking off a rebuild
+export function cachedSearchIndex(): SearchIndex | null {
+  return readCache();
 }

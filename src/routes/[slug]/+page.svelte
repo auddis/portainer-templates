@@ -8,6 +8,7 @@
   import ProjectStats from '$lib/ProjectStats.svelte';
   import Versions from '$lib/Versions.svelte';
   import SimilarApps from '$lib/SimilarApps.svelte';
+  import DeployModes from '$lib/DeployModes.svelte';
   import MdContent from '$lib/MdContent.svelte';
   import Note from '$lib/Note.svelte';
   import Logo from '$lib/Logo.svelte';
@@ -18,7 +19,7 @@
   import Meta from '$lib/Meta.svelte';
 
   import { baseUrl } from '$src/constants';
-  import type { Template, Service, DockerHubResponse, DockerMeta, ProjectStats as ProjectStatsType, SimilarApp } from '$src/Types';
+  import type { Template, Service, DockerHubResponse, DockerMeta, ProjectStats as ProjectStatsType, SimilarApp, DeployMode } from '$src/Types';
 
   const urlSlug = $derived(page.params.slug ?? '');
 
@@ -28,6 +29,7 @@
   const project = $derived(page.data.project as ProjectStatsType | null);
   const services = $derived((page.data.services ?? []) as Service[]);
   const similar = $derived((page.data.similar ?? []) as SimilarApp[]);
+  const modes = $derived((page.data.modes ?? []) as DeployMode[]);
   const readme = $derived((page.data.readme ?? null) as string | null);
   const stackfile = $derived((page.data.stackfile ?? null) as string | null);
 
@@ -132,10 +134,13 @@
 
 {#if template}
   <section class="summary-section">
-    <h1>
-      <Logo src={template.logo} name={template.title} />
-      {template.title}
-    </h1>
+    <div class="summary-head">
+      <h1>
+        <Logo src={template.logo} name={template.title} />
+        {template.title}
+      </h1>
+      <DeployModes {modes} />
+    </div>
     {#if template.categories}
       <p class="tags">
         {#each template.categories as tag (tag)}
@@ -224,6 +229,13 @@
     padding: 1rem;
     display: flex;
     flex-direction: column;
+    .summary-head {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 0.75rem 1rem;
+    }
     h1 {
       font-size: 4rem;
       margin: 0;

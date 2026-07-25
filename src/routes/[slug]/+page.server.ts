@@ -2,22 +2,38 @@ import { error } from '@sveltejs/kit';
 import { loadTemplates, getServices, mergeEnv } from '$lib/server/templates';
 import { getDockerHubStats, getDockerMeta } from '$lib/server/dockerhub';
 import { getProjectStats, getReadme, getReleases } from '$lib/server/github';
-import { getSearchIndex } from '$lib/server/search-index';
+import { cachedSearchIndex } from '$lib/server/search-index';
 import { searchEntries } from '$lib/search';
 import { slugify } from '$lib/format';
-import type { Template, Service, SimilarApp, DockerMeta, ProjectStats, SearchEntry } from '$src/Types';
+import type { Template, Service, SimilarApp, DockerMeta, ProjectStats, SearchEntry, DeployMode } from '$src/Types';
 import type { PageServerLoad } from './$types';
 
 type Fetch = typeof globalThis.fetch;
+
+// Reading order for the deploy-mode switcher: container, stack, swarm, edge
+const MODE_ORDER = [1, 3, 2, 4];
 
 /* Based on the current page name, find the corresponding template */
 const findTemplate = (allTemplates: Template[], slug: string) => {
   return allTemplates.find((temp) => slugify(temp.title) === slug);
 };
 
-/* Give up on a promise after ms, resolving to null rather than hanging the page */
-const withTimeout = <T>(p: Promise<T>, ms: number): Promise<T | null> =>
-  Promise.race([p, new Promise<null>((res) => setTimeout(() => res(null), ms))]);
+/* Same app minus its "(container)"/"(stack)"/etc suffix, so differently-worded variants still group */
+const baseKey = (title: string): string =>
+  title.replace(/\s*\((?:container|stack|swarm|compose|edge)\)\s*$/i, '').replace(/[^a-z0-9]/gi, '').toLowerCase();
+
+/* The deploy methods this app ships as (container/stack/swarm), for the mode switcher */
+const findModes = (allTemplates: Template[], current: Template): DeployMode[] => {
+  const key = baseKey(current.title);
+  const currentSlug = slugify(current.title);
+  const seen = new Set<number>();
+  return allTemplates
+    .filter((t) => baseKey(t.title) === key)
+    .map((t) => ({ type: t.type, slug: slugify(t.title) }))
+    .filter((m) => m.slug && !seen.has(m.type) && seen.add(m.type))
+    .sort((a, b) => MODE_ORDER.indexOf(a.type) - MODE_ORDER.indexOf(b.type))
+    .map((m) => ({ ...m, current: m.slug === currentSlug }));
+};
 
 /* Slim a template down to the fields the search results list needs (no third-party stats) */
 const toSearchEntry = (t: Template): SearchEntry => ({
@@ -31,9 +47,9 @@ const toSearchEntry = (t: Template): SearchEntry => ({
   ...(t.image && { image: t.image }),
 });
 
-/* Entries to search when a slug 404s: the enriched index for stats, or the plain list if it's slow */
-const fallbackEntries = async (allTemplates: Template[]): Promise<SearchEntry[]> => {
-  const index = await withTimeout(getSearchIndex(), 2500).catch(() => null);
+/* Entries to search when a slug 404s: the prebuilt index for stats if it's ready, else the plain list */
+const fallbackEntries = (allTemplates: Template[]): SearchEntry[] => {
+  const index = cachedSearchIndex();
   if (index) return index.entries;
   const seen = new Set<string>();
   return allTemplates.map(toSearchEntry).filter((e) => e.slug && !seen.has(e.slug) && seen.add(e.slug));
@@ -76,7 +92,7 @@ const returnResults = async (allTemplates: Template[], templateSlug: string, fet
   if (!template) {
     // No such page. If the slug reads like a search, 404 but carry the results it would've matched
     const query = templateSlug.replace(/[-_]+/g, ' ');
-    const matches = searchEntries(await fallbackEntries(allTemplates), query, 24);
+    const matches = searchEntries(fallbackEntries(allTemplates), query, 24);
     throw error(404, matches.length ? { message: `No template named "${templateSlug}"`, query, matches } : `No template named "${templateSlug}"`);
   }
 
@@ -117,6 +133,7 @@ const returnResults = async (allTemplates: Template[], templateSlug: string, fet
     services,
     stackfile,
     similar: findSimilar(allTemplates, template),
+    modes: findModes(allTemplates, template),
   };
 };
 
