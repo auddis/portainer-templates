@@ -16,6 +16,7 @@
   import PortainerInstall from '$lib/PortainerInstall.svelte';
   import ReverseProxy from '$lib/ReverseProxy.svelte';
   import Troubleshooting from '$lib/Troubleshooting.svelte';
+  import PortainerExplainer from '$lib/PortainerExplainer.svelte';
   import Meta from '$lib/Meta.svelte';
 
   import { baseUrl } from '$src/constants';
@@ -211,6 +212,9 @@
   </svelte:boundary>
   <svelte:boundary onerror={(e) => console.error('Troubleshooting section failed:', e)}>
     <Troubleshooting {template} {dockerMeta} {project} {services} />
+  </svelte:boundary>
+  <svelte:boundary onerror={(e) => console.error('Portainer explainer section failed:', e)}>
+    <PortainerExplainer {template} {dockerMeta} {project} {services} />
   </svelte:boundary>
   <SimilarApps items={similar} />
 
