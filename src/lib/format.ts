@@ -53,3 +53,40 @@ export const timeAgo = (dateTime: string): string => {
   }
   return `${Math.floor(elapsed / msPer[4])} years ago`;
 };
+
+// Render project docs (Docker Hub / GitHub readmes) with a few GFM niceties snarkdown misses.
+export const renderDoc = (md: string | null | undefined): string => {
+  if (!md) return '';
+
+  // GitHub-flavoured bits snarkdown lacks: pipe tables, bare video links, over-long break runs
+  const FENCE = /^```[\s\S]*?^```/gm;
+  const BR_RUN = /(?:<br\s*\/?>[ \t]*){3,}/gi;
+  const VIDEO = /^[ \t]*(https?:\/\/\S+\.(?:mp4|webm|ogg|mov))[ \t]*$/gim;
+  const TABLE = /^ {0,3}\|(.+)\|[ \t]*\n {0,3}\|[ :|-]+\|[ \t]*\n((?: {0,3}\|.*\|[ \t]*(?:\n|$))+)/gm;
+  const STASH = /\[\[\[fence:(\d+)\]\]\]/g;
+
+  const cells = (row: string): string[] =>
+    row.replace(/^ *\|[ \t]*|[ \t]*\|[ \t]*$/g, '').split('|').map((c) => c.trim());
+
+  // one GFM pipe table to an HTML table, rendering each cell's inline markdown
+  const toTable = (_m: string, head: string, body: string): string => {
+    const th = cells(head).map((c) => `<th>${snarkdown(c)}</th>`).join('');
+    const rows = body
+      .trimEnd()
+      .split('\n')
+      .map((r) => `<tr>${cells(r).map((c) => `<td>${snarkdown(c)}</td>`).join('')}</tr>`)
+      .join('');
+    return `\n<table><thead><tr>${th}</tr></thead><tbody>${rows}</tbody></table>\n`;
+  };
+
+  // stash fenced code behind a placeholder so its contents survive the transforms untouched
+  const fences: string[] = [];
+  const prepared = md
+    .replace(/\r\n?/g, '\n')
+    .replace(FENCE, (m) => `[[[fence:${fences.push(m) - 1}]]]`)
+    .replace(BR_RUN, '<br><br>')
+    .replace(VIDEO, (_m, url) => `\n<video controls preload="metadata" src="${url}"></video>\n`)
+    .replace(TABLE, toTable)
+    .replace(STASH, (_m, i) => fences[+i]);
+  return snarkdown(prepared);
+};
