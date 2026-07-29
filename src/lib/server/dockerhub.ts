@@ -50,7 +50,7 @@ function isVersion(tag: string): boolean {
 const ARCH_ORDER = ['amd64', 'arm64', 'arm/v7', 'arm/v6', '386', 'ppc64le', 's390x', 'riscv64'];
 
 const rank = (x: string) => (ARCH_ORDER.indexOf(x) < 0 ? 99 : ARCH_ORDER.indexOf(x));
-const sortArches = (arches: Iterable<string>) =>
+export const sortArches = (arches: Iterable<string>) =>
   [...arches].sort((a, b) => rank(a) - rank(b) || a.localeCompare(b));
 
 const tagPlatforms = (tag: DhTag): string[] =>

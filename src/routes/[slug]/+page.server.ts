@@ -1,6 +1,7 @@
 import { error } from '@sveltejs/kit';
 import { loadTemplates, getServices, mergeEnv } from '$lib/server/templates';
 import { getDockerHubStats, getDockerMeta } from '$lib/server/dockerhub';
+import { getGhcrStats } from '$lib/server/ghcr';
 import { getProjectStats, getReadme, getReleases } from '$lib/server/github';
 import { cachedSearchIndex } from '$lib/server/search-index';
 import { searchEntries } from '$lib/search';
@@ -107,18 +108,21 @@ const returnResults = async (allTemplates: Template[], templateSlug: string, fet
     services = await Promise.all(
       services.map(async (service) => ({
         ...service,
-        dockerStats: await getDockerHubStats(service.image, fetch),
+        dockerStats: (await getDockerHubStats(service.image, fetch)) ?? (await getGhcrStats(service.image, fetch))?.info ?? null,
       }))
     );
   }
 
   // Everything below is independent, so fetch it all at once
-  const [dockerStats, rawMeta, project] = await Promise.all([
+  const [hubStats, hubMeta, project, ghcr] = await Promise.all([
     getDockerHubStats(template.image, fetch),
     getDockerMeta(template.image, fetch, 30),
     getProjectStats(template, fetch),
+    getGhcrStats(template.image, fetch),
   ]);
-  const dockerMeta = await withReleaseNotes(rawMeta, project, fetch);
+  // GHCR images aren't on Docker Hub, so fall back to the registry manifest for their image card
+  const dockerStats = hubStats ?? ghcr?.info ?? null;
+  const dockerMeta = await withReleaseNotes(hubMeta ?? ghcr?.meta ?? null, project, fetch);
 
   // No Docker Hub docs to show? Fall back to the project's GitHub readme
   const hasDocs = !!dockerStats?.full_description || services.some((s) => s.dockerStats?.full_description);
